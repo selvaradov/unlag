@@ -170,7 +170,7 @@ export const HEADER = {
   how: 'How this works',
   howLede:
     'Every instruction is placed around the nightly low point of your body clock, moved a little each day by timed light.',
-  howHref: 'how.html',
+  howHref: 'how',
   back: 'Back to the plan',
 };
 

@@ -5,7 +5,7 @@ import { APP_NAME, FOOTER, HEADER, METHOD } from './copy.ts';
 import { ICONS } from './ui/icons.ts';
 
 const root = document.getElementById('how')!;
-const back = `index.html${location.search}`;
+const back = `/${location.search}`;
 root.className = 'how-page';
 root.innerHTML = `
   <header class="top">
