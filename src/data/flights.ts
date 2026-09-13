@@ -1,4 +1,5 @@
 // Flight lookup through the site's own function, mapped onto the plan's inputs.
+import { DateTime } from 'luxon';
 import { type Airport, findAirport, loadAirports } from './airports.ts';
 
 export interface FlightPoint {
@@ -8,12 +9,16 @@ export interface FlightPoint {
   tz?: string;
   departure?: string;
   arrival?: string;
+  // UTC instants from providers that do not give local times.
+  departureUtc?: string;
+  arrivalUtc?: string;
 }
 
 export interface FlightLookup {
   carrier: string;
   number: string;
   date: string;
+  provider?: string;
   points: FlightPoint[];
 }
 
@@ -62,12 +67,21 @@ export function mapLookup(lookup: FlightLookup, airports: Airport[]): FlightResu
   const last = points[points.length - 1];
   const from = first && resolve(first, airports);
   const to = last && resolve(last, airports);
-  if (!from || !to || !first.departure || !last.arrival) throw new FlightLookupError('unknown-airport');
+  // A UTC instant becomes the wall clock at that airport.
+  const wall = (localTime: string | undefined, utc: string | undefined, airport: Airport | undefined) => {
+    if (localTime) return localTime;
+    if (!utc || !airport) return undefined;
+    const t = DateTime.fromISO(utc, { zone: airport.tz });
+    return t.isValid ? t.toFormat("yyyy-MM-dd'T'HH:mm") : undefined;
+  };
+  const depart = wall(first?.departure, first?.departureUtc, from);
+  const arrive = wall(last?.arrival, last?.arrivalUtc, to);
+  if (!from || !to || !depart || !arrive) throw new FlightLookupError('unknown-airport');
   return {
     from,
     to,
-    depart: first.departure,
-    arrive: last.arrival,
+    depart,
+    arrive,
     stops: points.slice(1, -1).map((p) => p.code),
   };
 }

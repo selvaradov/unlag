@@ -57,6 +57,23 @@ describe('lookup mapping', () => {
     expect(via.stops).toEqual(['SNN']);
   });
 
+  it('turns UTC schedule times into the wall clock at each airport', () => {
+    const r = mapLookup(
+      {
+        carrier: 'UA',
+        number: '900',
+        date: '2026-09-16',
+        points: [
+          { code: 'LHR', departureUtc: '2026-09-16T09:35:00Z' },
+          { code: 'SFO', arrivalUtc: '2026-09-16T20:35:00Z' },
+        ],
+      },
+      list,
+    );
+    expect(r.depart).toBe('2026-09-16T10:35');
+    expect(r.arrive).toBe('2026-09-16T13:35');
+  });
+
   it('accepts an airport outside the list when the service supplies its zone', () => {
     const r = mapLookup(
       {

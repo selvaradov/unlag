@@ -49,20 +49,25 @@ model. The rules are kept as published rather than tuned to either.
 ## Flight lookup
 
 Typing a flight number and date fills in the airports and times. The lookup
-runs through a Netlify Function, `netlify/functions/flight.mts`, which calls
-AeroDataBox on RapidAPI with a key held in an environment variable, so nothing
-secret reaches the browser. Without the key the function answers 503 and the
-form says lookup is not set up.
+runs through a Netlify Function, `netlify/functions/flight.mts`, which holds
+the API keys so nothing secret reaches the browser. Two providers are
+supported and tried in order when their key is set:
 
-To enable it, subscribe to AeroDataBox's Basic plan on RapidAPI, which is free
-with no card and allows 400 units a month, copy the application key, then:
+- FlightAware AeroAPI, `AEROAPI_KEY`. Published schedules up to a year ahead.
+  The Personal tier is free up to a small monthly allowance and is licensed
+  for personal use only. Times come back in UTC and are converted using the
+  airport's zone.
+- AeroDataBox on RapidAPI, `AERODATABOX_KEY`. The Basic plan is free with no
+  card, but its forward window is only a few days, so it suits last minute
+  lookups.
 
 ```
+netlify env:set AEROAPI_KEY <key>
 netlify env:set AERODATABOX_KEY <key>
 ```
 
-Redeploy after setting it. A lookup costs a few units, so the free plan covers
-roughly a hundred lookups a month.
+Set one or both and redeploy. Without any key the function answers 503 and
+the form says lookup is not set up.
 
 ## Development
 
