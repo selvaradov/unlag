@@ -416,20 +416,6 @@ h3 {
   color: var(--muted);
 }
 
-.landing {
-  position: absolute;
-  z-index: 2;
-  transform: translateY(-50%);
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px dashed var(--muted);
-  background: var(--bg);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
 .now-line {
   position: absolute;
   left: 56px;

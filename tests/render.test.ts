@@ -28,8 +28,9 @@ describe('feed', () => {
     const el = renderFeed(plan, opts(plan.depart));
     expect(el.querySelectorAll('g.item').length).toBe(feedItems(plan).length);
     expect(el.querySelectorAll('.day-head').length).toBeGreaterThanOrEqual(8);
-    const landing = el.querySelector<HTMLElement>('.landing')!;
-    expect(parseFloat(landing.style.top)).toBeCloseTo(yOf(plan, plan.arrive, px), 3);
+    const landing = el.querySelector<SVGTextElement>('text.landing')!;
+    expect(Number(landing.getAttribute('y')) - 4).toBeCloseTo(yOf(plan, plan.arrive, px), 3);
+    expect(landing.textContent).toContain('13:35 PDT');
     expect(el.querySelector('#now')).not.toBeNull();
   });
 

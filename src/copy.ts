@@ -133,8 +133,9 @@ export const FEED = {
   noCaffeineDetail: "Anything now would cut into tonight's sleep.",
   caffeineFine: 'caffeine is fine',
   otherZone: (zone: string) => `${zone} on the right`,
-  landed: (t: string, zone: string, hours: number, direction: Direction) =>
-    `landed ${t} ${zone} · clocks ${direction === 'delay' ? '−' : '+'}${hours} h`,
+  landed: (t: string, zone: string) => `landed ${t} ${zone}`,
+  clocksChange: (hours: number, direction: Direction) =>
+    `clocks ${direction === 'delay' ? 'back' : 'forward'} ${hours} h`,
 };
 
 export const DAYLIST = {

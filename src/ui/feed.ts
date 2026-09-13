@@ -235,6 +235,8 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         let body = `<circle class="station" cx="${mainX}" cy="${yDep}" r="${STATION_R}"/>${icon('plane', mainX, yDep, 14, 'var(--station-ink)')}`;
         body += `<circle class="station" cx="${mainX}" cy="${yArr}" r="${STATION_R}"/>${icon('landing', mainX, yArr, 14, 'var(--station-ink)')}`;
         body += `<text class="seg-title" x="${labelX}" y="${yDep - 8}">${esc(item.title)} <tspan class="seg-meta">${duration(e.end - e.start)}</tspan></text>`;
+        body += `<text class="seg-title landing" x="${labelX}" y="${yArr + 4}">${esc(FEED.landed(clock(plan, plan.arrive), zoneAbbr(plan, plan.arrive)))}</text>`;
+        body += `<text class="seg-meta" x="${labelX}" y="${yArr + 20}">${esc(FEED.clocksChange(plan.totalShiftHours, plan.direction))}</text>`;
         g(body, 'look-flight');
         break;
       }
@@ -244,14 +246,19 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         const y1 = y(e.end);
         const dashed = item.look === 'noCaffeine' ? ' dashed' : '';
         let body = `<line class="side${dashed}" x1="${sideX}" x2="${sideX}" y1="${y0}" y2="${y1}" stroke-width="${THIN_W}"/>`;
-        const doseNear = items.some(
-          (o) => o.look === 'caffeineDose' && Math.abs(o.event.start - e.start) < 30 * MINUTE,
+        const doseAt = items.some((o) => o.look === 'caffeineDose' && Math.abs(o.event.start - e.start) < 15 * MINUTE);
+        const doseBefore = items.some(
+          (o) =>
+            o.look === 'caffeineDose' &&
+            e.start - o.event.start >= 15 * MINUTE &&
+            e.start - o.event.start < 60 * MINUTE,
         );
-        if (!doseNear || item.look === 'noCaffeine') {
+        if (!doseAt) {
           const [t1, t2] =
             item.look === 'caffeine' ? [FEED.caffeineFine, FEED.until(clock(plan, e.end))] : [item.title, ''];
-          body += `<text class="side-title" x="${sideX + 14}" y="${y0 + 4}">${esc(t1)}</text>`;
-          if (t2 && y1 - y0 >= 30) body += `<text class="side-meta" x="${sideX + 14}" y="${y0 + 18}">${esc(t2)}</text>`;
+          const ly = y0 + 4 + (doseBefore ? 30 : 0);
+          body += `<text class="side-title" x="${sideX + 14}" y="${ly}">${esc(t1)}</text>`;
+          if (t2 && y1 - y0 >= 30) body += `<text class="side-meta" x="${sideX + 14}" y="${ly + 14}">${esc(t2)}</text>`;
         }
         g(body, `look-${item.look}`);
         break;
@@ -291,7 +298,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     }
   });
 
-  // Day headers, the landing divider and the now line are HTML so they can carry backgrounds.
+  // Day headers and the now line are HTML so they can carry backgrounds.
   for (const m of hourMarks(plan)) {
     if (!m.dayStart) continue;
     const zone = zoneAt(plan, m.t);
@@ -305,14 +312,6 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     head.dataset.day = d.toISODate() ?? '';
     root.appendChild(head);
   }
-  const landing = el(
-    'div',
-    'landing',
-    FEED.landed(clock(plan, plan.arrive), zoneAbbr(plan, plan.arrive), plan.totalShiftHours, plan.direction),
-  );
-  landing.style.top = `${yArr}px`;
-  landing.style.right = `${RIGHT_COL + 6}px`;
-  root.appendChild(landing);
 
   if (now >= axisStart(plan) && now <= plan.planEnd) {
     const line = el('div', 'now-line', `<span>${clock(plan, now)}</span>`);
