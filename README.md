@@ -49,25 +49,21 @@ model. The rules are kept as published rather than tuned to either.
 ## Flight lookup
 
 Typing a flight number and date fills in the airports and times. The lookup
-runs through a Netlify Function, `netlify/functions/flight.mts`, which holds
-the API keys so nothing secret reaches the browser. Two providers are
-supported and tried in order when their key is set:
-
-- FlightAware AeroAPI, `AEROAPI_KEY`. Published schedules up to a year ahead.
-  The Personal tier is free up to a small monthly allowance and is licensed
-  for personal use only. Times come back in UTC and are converted using the
-  airport's zone.
-- AeroDataBox on RapidAPI, `AERODATABOX_KEY`. The Basic plan is free with no
-  card, but its forward window is only a few days, so it suits last minute
-  lookups.
+runs through a Netlify Function, `netlify/functions/flight.mts`, which calls
+FlightAware AeroAPI's schedules endpoint with a key held in an environment
+variable, so nothing secret reaches the browser. Schedules are published up
+to a year ahead. Times come back in UTC and are converted using the airport's
+zone. The Personal tier is free up to a small monthly allowance and licensed
+for personal use only.
 
 ```
 netlify env:set AEROAPI_KEY <key>
-netlify env:set AERODATABOX_KEY <key>
 ```
 
-Set one or both and redeploy. Without any key the function answers 503 and
-the form says lookup is not set up.
+Spend is bounded three ways: only requests from the site's own pages are
+served, identical queries are cached at the CDN for a day, and counters in
+Netlify Blobs cap lookups per client per hour (`LOOKUP_HOURLY_CAP`, default 12) and per month (`LOOKUP_MONTHLY_CAP`, default 300). Without the key the
+function answers 503 and the form says lookup is not set up.
 
 ## Development
 

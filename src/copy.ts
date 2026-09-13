@@ -235,6 +235,9 @@ export const LOOKUP = {
     'not-found': 'No scheduled flight with that number on that date.',
     'unknown-airport': 'Found the flight, but one of its airports is not in the list. Pick the airports by hand.',
     failed: 'The lookup service did not answer. Enter the flight by hand.',
+    'rate-limited': 'Too many lookups in the last hour. Try again later or enter the flight by hand.',
+    quota: 'The monthly lookup allowance is used up. Enter the flight by hand.',
+    forbidden: 'Lookups only work from this site.',
   } as Record<string, string>,
 };
 

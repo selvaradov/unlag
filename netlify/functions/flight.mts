@@ -1,39 +1,21 @@
-// Looks up a flight's scheduled legs by number and date, keeping the API keys off the page.
-// GET /api/flight?number=UA900&date=2026-09-16
+// Looks up a flight's scheduled legs by number and date through FlightAware AeroAPI, keeping
+// the key off the page and the spend bounded. GET /api/flight?number=UA900&date=2026-09-16
 //
-// Two providers, tried in order when their key is present:
-//   AEROAPI_KEY      FlightAware AeroAPI schedules, published up to a year ahead; times in UTC
-//   AERODATABOX_KEY  AeroDataBox on RapidAPI, good for dates close to today; times local
-import type { Config } from '@netlify/functions';
+// Guards, so a bot cannot run up the bill:
+//   - only requests from this site's own pages are served
+//   - a monthly cap on lookups (LOOKUP_MONTHLY_CAP, default 300) and an hourly cap per client
+//   - identical queries are cached at the CDN for a day
+import { getStore } from '@netlify/blobs';
+import type { Config, Context } from '@netlify/functions';
+
+const MONTHLY_CAP = Number(process.env.LOOKUP_MONTHLY_CAP ?? 300);
+const HOURLY_CAP_PER_CLIENT = Number(process.env.LOOKUP_HOURLY_CAP ?? 12);
 
 interface Point {
   code: string;
-  city?: string;
-  tz?: string;
-  // Local wall clock without offset, when the provider gives it.
-  departure?: string;
-  arrival?: string;
-  // UTC instants, when the provider gives those instead.
+  // UTC instants; the page turns them into the wall clock at each airport.
   departureUtc?: string;
   arrivalUtc?: string;
-}
-
-interface Lookup {
-  carrier: string;
-  number: string;
-  date: string;
-  provider: string;
-  points: Point[];
-}
-
-class LookupFailure extends Error {
-  readonly status: number;
-  readonly code: string;
-  constructor(code: string, status: number) {
-    super(code);
-    this.code = code;
-    this.status = status;
-  }
 }
 
 function json(body: unknown, status = 200, cache = 'no-store'): Response {
@@ -53,32 +35,35 @@ export function parseFlightNumber(raw: string): { carrier: string; number: strin
   return m ? { carrier: m[1], number: String(Number(m[2])) } : null;
 }
 
-// AeroDataBox gives "2026-09-16 10:35+01:00"; the plan wants the wall clock alone.
-function local(value: string | undefined): string | undefined {
-  const m = value?.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
-  return m ? `${m[1]}T${m[2]}` : undefined;
-}
-
 function nextDay(date: string): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 }
 
-// Legs become a chain of points: each leg's arrival is the next leg's departure.
-function chain<T>(legs: T[], dep: (l: T) => Point, arr: (l: T) => Point): Point[] {
-  const points: Point[] = [];
-  for (const leg of legs) {
-    const d = dep(leg);
-    const last = points[points.length - 1];
-    if (last && last.code === d.code) Object.assign(last, { departure: d.departure, departureUtc: d.departureUtc });
-    else points.push(d);
-    points.push(arr(leg));
+// The page's own requests carry a same-origin fetch header or a referer from this host.
+function fromThisSite(req: Request): boolean {
+  const site = new URL(req.url).host;
+  const fetchSite = req.headers.get('sec-fetch-site');
+  if (fetchSite === 'same-origin') return true;
+  const referer = req.headers.get('referer') ?? req.headers.get('origin') ?? '';
+  try {
+    return new URL(referer).host === site;
+  } catch {
+    return false;
   }
-  return points;
 }
 
-interface AeroApiLeg {
+// Counts in a blob store; the counter's key carries the period, so old ones simply stop mattering.
+async function underCap(key: string, cap: number): Promise<boolean> {
+  const store = getStore('lookups');
+  const current = Number((await store.get(key)) ?? 0);
+  if (current >= cap) return false;
+  await store.set(key, String(current + 1));
+  return true;
+}
+
+interface Leg {
   ident_iata?: string;
   actual_ident_iata?: string | null;
   scheduled_out?: string;
@@ -87,7 +72,7 @@ interface AeroApiLeg {
   destination_iata?: string;
 }
 
-async function aeroApi(key: string, carrier: string, number: string, date: string): Promise<Point[]> {
+async function aeroApi(key: string, carrier: string, number: string, date: string): Promise<Point[] | null> {
   const q = new URLSearchParams({
     airline: carrier,
     flight_number: number,
@@ -97,80 +82,58 @@ async function aeroApi(key: string, carrier: string, number: string, date: strin
   const res = await fetch(`https://aeroapi.flightaware.com/aeroapi/schedules/${date}/${nextDay(date)}?${q}`, {
     headers: { 'x-apikey': key, accept: 'application/json' },
   });
-  if (!res.ok) throw new LookupFailure('upstream', res.status);
-  const data = (await res.json()) as { scheduled?: AeroApiLeg[] };
+  if (!res.ok) throw new Error(`upstream ${res.status}`);
+  const data = (await res.json()) as { scheduled?: Leg[] };
   const want = `${carrier}${number}`;
   const legs = (data.scheduled ?? [])
     .filter((l) => l.origin_iata && l.destination_iata && l.scheduled_out && l.scheduled_in)
     .filter((l) => !l.ident_iata || l.ident_iata === want || l.actual_ident_iata === want)
     .sort((a, b) => String(a.scheduled_out).localeCompare(String(b.scheduled_out)));
-  if (!legs.length) throw new LookupFailure('not-found', 404);
-  return chain(
-    legs,
-    (l) => ({ code: l.origin_iata!, departureUtc: l.scheduled_out }),
-    (l) => ({ code: l.destination_iata!, arrivalUtc: l.scheduled_in }),
-  );
+  if (!legs.length) return null;
+  // Legs become a chain of points: each leg's arrival is the next leg's departure.
+  const points: Point[] = [];
+  for (const leg of legs) {
+    const last = points[points.length - 1];
+    if (last && last.code === leg.origin_iata) last.departureUtc = leg.scheduled_out;
+    else points.push({ code: leg.origin_iata!, departureUtc: leg.scheduled_out });
+    points.push({ code: leg.destination_iata!, arrivalUtc: leg.scheduled_in });
+  }
+  return points;
 }
 
-interface Movement {
-  airport?: { iata?: string; municipalityName?: string; timeZone?: string };
-  scheduledTime?: { local?: string; utc?: string };
-}
-
-interface AeroDataBoxLeg {
-  departure?: Movement;
-  arrival?: Movement;
-}
-
-async function aeroDataBox(key: string, carrier: string, number: string, date: string): Promise<Point[]> {
-  const host = 'aerodatabox.p.rapidapi.com';
-  const path = `/flights/number/${carrier}${number}/${date}?dateLocalRole=Departure&withLocation=false`;
-  const res = await fetch(`https://${host}${path}`, {
-    headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': host, accept: 'application/json' },
-  });
-  if (res.status === 204 || res.status === 404) throw new LookupFailure('not-found', 404);
-  if (!res.ok) throw new LookupFailure('upstream', res.status);
-  const legs = ((await res.json()) as AeroDataBoxLeg[])
-    .filter((l) => l.departure?.airport?.iata && l.arrival?.airport?.iata && l.departure?.scheduledTime?.utc)
-    .sort((a, b) => String(a.departure!.scheduledTime!.utc).localeCompare(String(b.departure!.scheduledTime!.utc)));
-  if (!legs.length) throw new LookupFailure('not-found', 404);
-  const point = (m: Movement, when: 'departure' | 'arrival'): Point => ({
-    code: m.airport!.iata!,
-    city: m.airport?.municipalityName,
-    tz: m.airport?.timeZone,
-    [when]: local(m.scheduledTime?.local),
-  });
-  return chain(
-    legs,
-    (l) => point(l.departure!, 'departure'),
-    (l) => point(l.arrival!, 'arrival'),
-  );
-}
-
-export default async (req: Request): Promise<Response> => {
-  const providers: { name: string; run: (c: string, n: string, d: string) => Promise<Point[]> }[] = [];
-  if (process.env.AEROAPI_KEY)
-    providers.push({ name: 'aeroapi', run: (c, n, d) => aeroApi(process.env.AEROAPI_KEY!, c, n, d) });
-  if (process.env.AERODATABOX_KEY)
-    providers.push({ name: 'aerodatabox', run: (c, n, d) => aeroDataBox(process.env.AERODATABOX_KEY!, c, n, d) });
-  if (!providers.length) return json({ error: 'unavailable' }, 503);
+export default async (req: Request, context: Context): Promise<Response> => {
+  const key = process.env.AEROAPI_KEY;
+  if (!key) return json({ error: 'unavailable' }, 503);
+  if (!fromThisSite(req)) return json({ error: 'forbidden' }, 403);
 
   const url = new URL(req.url);
   const flight = parseFlightNumber(url.searchParams.get('number') ?? '');
   const date = url.searchParams.get('date') ?? '';
   if (!flight || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'bad-request' }, 400);
 
-  let failure: LookupFailure | null = null;
-  for (const p of providers) {
-    try {
-      const points = await p.run(flight.carrier, flight.number, date);
-      const body: Lookup = { carrier: flight.carrier, number: flight.number, date, provider: p.name, points };
-      return json(body, 200, 'public, max-age=86400');
-    } catch (err) {
-      failure = err instanceof LookupFailure ? err : new LookupFailure('failed', 502);
-    }
+  const now = new Date();
+  const month = now.toISOString().slice(0, 7);
+  const hour = now.toISOString().slice(0, 13);
+  const client = context.ip || req.headers.get('x-nf-client-connection-ip') || 'unknown';
+  try {
+    if (!(await underCap(`client/${hour}/${client}`, HOURLY_CAP_PER_CLIENT)))
+      return json({ error: 'rate-limited' }, 429);
+    if (!(await underCap(`month/${month}`, MONTHLY_CAP))) return json({ error: 'quota' }, 429);
+  } catch {
+    // If the counter store is unavailable the lookup still runs; the CDN cache bounds repeats.
   }
-  return json({ error: failure?.code ?? 'failed' }, failure?.status ?? 502);
+
+  try {
+    const points = await aeroApi(key, flight.carrier, flight.number, date);
+    if (!points) return json({ error: 'not-found' }, 404, 'public, max-age=3600');
+    return json(
+      { carrier: flight.carrier, number: flight.number, date, provider: 'aeroapi', points },
+      200,
+      'public, max-age=86400',
+    );
+  } catch (err) {
+    return json({ error: 'failed', detail: String(err) }, 502);
+  }
 };
 
 export const config: Config = { path: '/api/flight' };

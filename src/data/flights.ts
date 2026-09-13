@@ -31,7 +31,8 @@ export interface FlightResult {
   stops: string[];
 }
 
-export type LookupError = 'unavailable' | 'bad-request' | 'not-found' | 'failed' | 'unknown-airport';
+export type LookupError =
+  'unavailable' | 'bad-request' | 'not-found' | 'failed' | 'unknown-airport' | 'rate-limited' | 'quota' | 'forbidden';
 
 export class FlightLookupError extends Error {
   readonly code: LookupError;
