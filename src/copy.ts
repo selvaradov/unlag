@@ -99,7 +99,15 @@ export const COPY_LINK = 'Copy link';
 export const LINK_COPIED = 'Copied';
 
 export const SOURCE_URL = 'https://github.com/selvaradov/unlag';
-export const FOOTER = `Rules from Burgess, Using bright light and melatonin to reduce jet lag, and the light and melatonin phase response curves. Not medical advice. <a href="${SOURCE_URL}">Source</a>.`;
+export const REFERENCES = {
+  burgess:
+    'https://www.med.upenn.edu/cbti/assets/user-content/documents/Burgess_UsingBrightLightandMelatonintoReduceJetLag.pdf',
+  // Khalsa et al. 2003, a phase response curve to single bright light pulses in human subjects.
+  lightPrc: 'https://doi.org/10.1113/jphysiol.2003.040477',
+  // Burgess et al. 2010, human phase response curves to three days of daily melatonin.
+  melatoninPrc: 'https://doi.org/10.1210/jc.2009-2590',
+};
+export const FOOTER = `Rules from <a href="${REFERENCES.burgess}">Burgess, Using bright light and melatonin to reduce jet lag</a>, and the <a href="${REFERENCES.lightPrc}">light</a> and <a href="${REFERENCES.melatoninPrc}">melatonin</a> phase response curves. Not medical advice. <a href="${SOURCE_URL}">Source</a>.`;
 
 export const HEADLINE = {
   nowSleep: (until: string) => `sleep until ${until}`,

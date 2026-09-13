@@ -9,9 +9,12 @@ plan. Hosted at https://unlag.selvaradov.net.
 
 ## The science
 
-The schedule is rule based, following Burgess, _Using bright light and
-melatonin to reduce jet lag_, and the light and melatonin phase response
-curves. Everything hangs off one point.
+The schedule is rule based, following Burgess, [_Using bright light and
+melatonin to reduce jet lag_](https://www.med.upenn.edu/cbti/assets/user-content/documents/Burgess_UsingBrightLightandMelatonintoReduceJetLag.pdf),
+the [light phase response curve](https://doi.org/10.1113/jphysiol.2003.040477)
+of Khalsa and colleagues (2003), and the [melatonin phase response
+curve](https://doi.org/10.1210/jc.2009-2590) of Burgess and colleagues (2010).
+Everything hangs off one point.
 
 - **Tmin** is the nightly low of core body temperature, about three hours
   before habitual wake, so 04:00 for a 07:00 riser. Light before Tmin delays

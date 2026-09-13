@@ -1616,3 +1616,7 @@ html.theme-switching .feed svg.rail {
     transition: none;
   }
 }
+
+.footer a {
+  color: inherit;
+}
