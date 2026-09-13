@@ -1588,3 +1588,31 @@ dialog.sheet::backdrop {
   align-items: center;
   margin-bottom: 6px;
 }
+
+/* A short ease when the theme is switched by hand, on the large surfaces only. Animating every
+   node would stall on the feed's thousands of SVG elements. Nothing animates on load. */
+html.theme-switching body,
+html.theme-switching .sticky,
+html.theme-switching .panel,
+html.theme-switching .toolbar,
+html.theme-switching .trip-card,
+html.theme-switching .day-list li,
+html.theme-switching .icon-button,
+html.theme-switching .zoom-group,
+html.theme-switching .theme-toggle,
+html.theme-switching dialog.sheet {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+html.theme-switching .feed svg.rail {
+  transition: opacity 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-switching * {
+    transition: none;
+  }
+}

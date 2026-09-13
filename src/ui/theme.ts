@@ -48,6 +48,9 @@ export function renderThemeToggle(): HTMLElement {
     b.title = o.title;
     b.setAttribute('aria-label', o.title);
     b.addEventListener('click', () => {
+      // Ease the change, then drop the class so nothing else animates later.
+      document.documentElement.classList.add('theme-switching');
+      window.setTimeout(() => document.documentElement.classList.remove('theme-switching'), 250);
       applyTheme(o.value);
       for (const [i, other] of buttons.entries())
         other.setAttribute('aria-pressed', String(options[i].value === o.value));
