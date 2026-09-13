@@ -280,8 +280,9 @@ export function generatePlan(input: PlanInput): Plan {
         if (awake >= cfg.CAFFEINE_DOSE_WAKE_HOURS) {
           const dose = cfg.CAFFEINE_DOSE[input.caffeine as 'none' | 'regular'];
           const at = nap ? nap.end : wake;
-          events.push({ kind: 'caffeineDose', start: at, end: at, note: dose, optional: true });
-          if (arrive > at + 3 * HOUR && arrive < end) {
+          const lastUseful = end - cfg.CAFFEINE_DOSE_MIN_HOURS_BEFORE_CUTOFF * HOUR;
+          if (at <= lastUseful) events.push({ kind: 'caffeineDose', start: at, end: at, note: dose, optional: true });
+          if (arrive > at + 3 * HOUR && arrive <= lastUseful) {
             events.push({ kind: 'caffeineDose', start: arrive, end: arrive, note: dose, optional: true });
           }
         }

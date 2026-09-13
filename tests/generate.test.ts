@@ -79,6 +79,14 @@ describe('London to San Francisco on UA 900', () => {
     expect(events(plan, 'sleep')).toContain('Wed 22:00-Thu 07:00');
   });
 
+  it('never suggests a dose within an hour of the cutoff', () => {
+    const cutoffs = plan.events.filter((e) => e.kind === 'caffeine').map((e) => e.end);
+    for (const d of plan.events.filter((e) => e.kind === 'caffeineDose')) {
+      const cutoff = cutoffs.find((c) => c > d.start)!;
+      expect(cutoff - d.start).toBeGreaterThanOrEqual(HOUR);
+    }
+  });
+
   it('stops caffeine eight hours before bed for a non-user', () => {
     const wed = plan.events.filter((e) => e.kind === 'caffeine').find((e) => e.start >= plan.depart);
     expect(local(plan, wed!.end)).toBe('Wed 14:00');

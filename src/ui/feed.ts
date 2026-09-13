@@ -1,11 +1,12 @@
 // The vertical timeline, drawn as one metro style line. Time runs down. Sleep, light and
 // avoid light are thick segments on the main line with a station at each start; the flight
-// kinks the line; caffeine and melatonin run on a thin line to the right.
+// kinks the line; caffeine and melatonin run on a thin line to the right. Labels are laid
+// out in a separate pass so they never overlap.
 import { DateTime } from 'luxon';
 import type { Plan, PlanEvent } from '../algorithm/types.ts';
 import { HOUR, MINUTE } from '../algorithm/time.ts';
 import { FEED, eventTitle } from '../copy.ts';
-import { clock, duration, instruction, isPoint, zoneAt } from './format.ts';
+import { clock, duration, instruction, isPoint, zoneAbbr, zoneAt } from './format.ts';
 import { ICONS, type IconName } from './icons.ts';
 
 export const DEFAULT_PX_PER_HOUR = 56;
@@ -17,7 +18,6 @@ export const FEED_PAD_TOP = 28;
 export const LEFT_COL = 56;
 export const RIGHT_COL = 56;
 const MAIN_OFFSET = 40;
-const KINK = 18;
 const LABEL_GAP = 24;
 // Below this width the other zone's hour column is dropped to make room for labels.
 export const NARROW = 480;
@@ -29,6 +29,7 @@ const BASE = {
 };
 // Average glyph width as a fraction of the font size, for fitting labels.
 const GLYPH = 0.5;
+const LABEL_GAP_Y = 4;
 
 export interface Metrics {
   side: number;
@@ -39,6 +40,7 @@ export interface Metrics {
   icon: number;
   font: number;
   meta: number;
+  kink: number;
 }
 
 // Line widths and text grow with the hour scale, so zooming in makes everything larger.
@@ -57,6 +59,8 @@ export function metrics(px: number, width: number): Metrics {
     icon: Math.round(station * 1.2),
     font,
     meta: font - 2.5,
+    // The flight kink is wide enough that a station on it clears a station on the main line.
+    kink: station * 2 + 6,
   };
 }
 
@@ -70,14 +74,14 @@ export interface FeedItem {
 
 const LOOK_TO_ICON: Record<FeedItem['look'], IconName> = {
   light: 'sun',
-  dark: 'noSun',
+  dark: 'glasses',
   caffeine: 'cup',
   noCaffeine: 'noCup',
   caffeineDose: 'cup',
   melatonin: 'pill',
-  sleep: 'sleep',
+  sleep: 'bed',
   nap: 'moon',
-  flight: 'plane',
+  flight: 'planeTakeoff',
 };
 
 // Plan events become feed items, plus the "no more caffeine" stretch that follows each caffeine window.
@@ -173,6 +177,12 @@ function fit(text: string, availablePx: number, font: number): string {
   return max > 3 ? `${text.slice(0, max - 1).trimEnd()}…` : '';
 }
 
+// The first candidate that fits, else the last one cut to fit.
+function fitPreferring(candidates: string[], availablePx: number, font: number): string {
+  const max = Math.floor(availablePx / (font * GLYPH));
+  return candidates.find((c) => c.length <= max) ?? fit(candidates[candidates.length - 1], availablePx, font);
+}
+
 // Break a label into at most `lines` lines that fit the width; the last line is cut if needed.
 function wrap(text: string, availablePx: number, font: number, lines: number): string[] {
   const max = Math.max(4, Math.floor(availablePx / (font * GLYPH)));
@@ -203,6 +213,44 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, ht
   return e;
 }
 
+interface LabelLine {
+  cls: string;
+  text: string;
+  h: number;
+}
+
+// A stack of label lines anchored at a top edge, allowed to run down to maxY.
+interface Block {
+  lane: 'main' | 'side';
+  top: number;
+  maxY: number;
+  x: number;
+  item: number;
+  lines: LabelLine[];
+}
+
+// Lays out blocks in a lane so none overlap: later blocks move down, and lines are dropped
+// from the bottom of a block when there is no room before the next item begins.
+function layout(blocks: Block[]): string {
+  const out: string[] = [];
+  for (const lane of ['main', 'side'] as const) {
+    let bottom = -Infinity;
+    for (const b of blocks.filter((x) => x.lane === lane).sort((a, c) => a.top - c.top)) {
+      const top = Math.max(b.top, bottom + LABEL_GAP_Y);
+      let used = 0;
+      for (const line of b.lines) {
+        if (top + used + line.h > b.maxY) break;
+        out.push(
+          `<text class="${line.cls}" data-i="${b.item}" x="${b.x}" y="${top + used + line.h - 4}">${line.text}</text>`,
+        );
+        used += line.h;
+      }
+      if (used > 0) bottom = top + used;
+    }
+  }
+  return out.join('');
+}
+
 export interface FeedOptions {
   pxPerHour: number;
   width: number;
@@ -226,6 +274,8 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
   const mainRoom = sideX - m.dot - 6 - labelX;
   const items = feedItems(plan);
   const step = labelStep(px);
+  const titleH = m.font + 4;
+  const metaH = m.meta + 3;
 
   const root = el('section', 'feed');
   root.style.height = `${height}px`;
@@ -235,7 +285,8 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     `<svg class="rail" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="--feed-font:${m.font}px;--feed-meta:${m.meta}px" xmlns="http://www.w3.org/2000/svg">`,
   );
 
-  // Hour grid and day labels.
+  // Hour grid and day labels. The first labelled hour after landing names the new zone.
+  let zoneShown = false;
   for (const mk of hourMarks(plan)) {
     const yy = y(mk.t);
     if (mk.dayStart) {
@@ -251,6 +302,13 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
       `<line class="hour-line${labelled ? '' : ' minor'}" x1="${LEFT_COL}" x2="${width - rightCol}" y1="${yy}" y2="${yy}"/>`,
     );
     if (labelled) {
+      // The first labelled hour after landing carries the new zone above it.
+      if (mk.t >= plan.arrive && !zoneShown) {
+        svg.push(
+          `<text class="hour-label zone-tag" x="${LEFT_COL - 8}" y="${yy - 8}" text-anchor="end">${zoneAbbr(plan, mk.t)}</text>`,
+        );
+        zoneShown = true;
+      }
       svg.push(`<text class="hour-label" x="${LEFT_COL - 8}" y="${yy + 4}" text-anchor="end">${mk.label}</text>`);
       if (!narrow)
         svg.push(`<text class="hour-label other" x="${width - rightCol + 8}" y="${yy + 4}">${mk.other}</text>`);
@@ -262,24 +320,30 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
   const yArr = y(plan.arrive);
   const bend = Math.min(10, (yArr - yDep) / 4);
   svg.push(
-    `<path class="guide" d="M${mainX},${FEED_PAD_TOP} V${yDep} l${KINK},${bend} V${yArr - bend} l${-KINK},${bend} V${height}"/>`,
+    `<path class="guide" d="M${mainX},${FEED_PAD_TOP} V${yDep} l${m.kink},${bend} V${yArr - bend} l${-m.kink},${bend} V${height}"/>`,
   );
   svg.push(`<line class="guide" x1="${sideX}" x2="${sideX}" y1="${FEED_PAD_TOP}" y2="${height}"/>`);
 
-  const onMain = (t: number) => (t > plan.depart && t < plan.arrive ? mainX + KINK : mainX);
-  // Label room below a main line item runs until the next main line item starts.
+  const onMain = (t: number) => (t > plan.depart && t < plan.arrive ? mainX + m.kink : mainX);
+  const selectedKey = opts.selected ? `${opts.selected.look}-${opts.selected.event.start}` : '';
+  const isMain = (o: FeedItem) => ['sleep', 'nap', 'light', 'dark'].includes(o.look);
   const mainStarts = items
-    .filter((o) => ['sleep', 'nap', 'light', 'dark'].includes(o.look))
+    .filter(isMain)
     .map((o) => o.event.start)
     .concat([plan.depart, plan.arrive])
     .sort((a, b) => a - b);
-  const roomBelow = (start: number) => {
-    const next = mainStarts.find((t) => t > start + MINUTE);
-    return next === undefined ? Infinity : y(next) - y(start) - 8;
+  const sideStarts = items
+    .filter((o) => !isMain(o) && o.look !== 'flight')
+    .map((o) => o.event.start)
+    .sort((a, b) => a - b);
+  const nextStart = (starts: number[], t: number) => {
+    const next = starts.find((s) => s > t + MINUTE);
+    return next === undefined ? height : y(next) - 6;
   };
-  const selectedKey = opts.selected ? `${opts.selected.look}-${opts.selected.event.start}` : '';
-  const doseAt = (t: number, within: number) =>
-    items.some((o) => o.look === 'caffeineDose' && Math.abs(o.event.start - t) < within);
+  const doseWithin = (t: number, before: number, after: number) =>
+    items.some((o) => o.look === 'caffeineDose' && o.event.start > t - before && o.event.start < t + after);
+  const blocks: Block[] = [];
+  const line = (cls: string, text: string, h: number): LabelLine => ({ cls, text: esc(text), h });
 
   items.forEach((item, i) => {
     const e = item.event;
@@ -293,8 +357,6 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
       svg.push(
         `<g class="item ${cls}${sel}${active ? ' active' : ''}" data-i="${i}" tabindex="0" role="button"><title>${title}</title>${body}</g>`,
       );
-    const line1 = m.font + 4;
-    const line2 = line1 + m.meta + 3;
 
     switch (item.look) {
       case 'sleep':
@@ -311,30 +373,41 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
           body += `<line class="seg-core" x1="${x}" x2="${x}" y1="${y0 + inset}" y2="${Math.max(y0 + inset, y1 - inset)}" stroke-width="${w - 5}"/>`;
         body += `<circle class="station" cx="${x}" cy="${y0}" r="${m.station}"/>`;
         body += icon(item.icon, x, y0, m.icon, 'var(--station-ink)');
-        const room = roomBelow(e.start);
-        const lx = x + LABEL_GAP;
-        const titleText = item.title + (e.optional ? ` ${FEED.optional}` : '');
-        const titleLines = wrap(titleText, mainRoom, m.font, room >= line2 + 4 ? 2 : 1);
-        titleLines.forEach((t, k) => {
-          body += `<text class="seg-title" x="${lx}" y="${y0 + 5 + k * line1}">${esc(t)}</text>`;
-        });
-        let ly = y0 + 5 + titleLines.length * line1;
-        if (room >= ly - y0 + m.meta) {
-          body += `<text class="seg-meta" x="${lx}" y="${ly}">${duration(e.end - e.start)}</text>`;
-          ly += m.meta + 3;
-        }
-        if (active && room >= ly - y0 + m.meta)
-          body += `<text class="seg-until" x="${lx}" y="${ly}">${FEED.until(clock(plan, e.end))}</text>`;
         g(body, `look-${item.look}`);
+        const maxY = nextStart(mainStarts, e.start);
+        const room = mainRoom - (x - mainX);
+        const lines = wrap(item.title + (e.optional ? ` ${FEED.optional}` : ''), room, m.font, 3).map((t) =>
+          line('seg-title', t, titleH),
+        );
+        lines.push(line('seg-meta', duration(e.end - e.start), metaH));
+        if (active) lines.push(line('seg-until', FEED.until(clock(plan, e.end)), metaH));
+        blocks.push({ lane: 'main', top: y0 - m.font * 0.6, maxY, x: x + LABEL_GAP, item: i, lines });
         break;
       }
       case 'flight': {
-        let body = `<circle class="station" cx="${mainX}" cy="${yDep}" r="${m.station}"/>${icon('plane', mainX, yDep, m.icon, 'var(--station-ink)')}`;
-        body += `<circle class="station" cx="${mainX}" cy="${yArr}" r="${m.station}"/>${icon('plane', mainX, yArr, m.icon, 'var(--station-ink)')}`;
-        body += `<text class="seg-title" x="${labelX}" y="${yDep - 8}">${esc(item.title)} <tspan class="seg-meta">${duration(e.end - e.start)}</tspan></text>`;
-        body += `<text class="seg-title landing" x="${labelX}" y="${yArr + 5}">${esc(FEED.landed(clock(plan, plan.arrive)))}</text>`;
-        body += `<text class="seg-meta" x="${labelX}" y="${yArr + line1 + 4}">${esc(FEED.clocksChange(plan.totalShiftHours, plan.direction))}</text>`;
+        let body = `<circle class="station" cx="${mainX}" cy="${yDep}" r="${m.station}"/>${icon('planeTakeoff', mainX, yDep, m.icon, 'var(--station-ink)')}`;
+        body += `<circle class="station" cx="${mainX}" cy="${yArr}" r="${m.station}"/>${icon('planeLanding', mainX, yArr, m.icon, 'var(--station-ink)')}`;
         g(body, 'look-flight');
+        // Departure label sits above its station so the first thing on board keeps the row below.
+        blocks.push({
+          lane: 'main',
+          top: yDep - titleH - 2,
+          maxY: yDep + m.station,
+          x: labelX,
+          item: i,
+          lines: [line('seg-title', `${item.title} · ${duration(e.end - e.start)}`, titleH)],
+        });
+        blocks.push({
+          lane: 'main',
+          top: yArr - m.font * 0.6,
+          maxY: nextStart(mainStarts, plan.arrive),
+          x: labelX,
+          item: i,
+          lines: [
+            line('seg-title landing', FEED.landed(clock(plan, plan.arrive)), titleH),
+            line('seg-meta', FEED.clocksChange(plan.totalShiftHours, plan.direction), metaH),
+          ],
+        });
         break;
       }
       case 'caffeine':
@@ -343,24 +416,22 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         const y1 = y(e.end);
         const dashed = item.look === 'noCaffeine' ? ' dashed' : '';
         let body = `<line class="side${dashed}" x1="${sideX}" x2="${sideX}" y1="${y0}" y2="${y1}" stroke-width="${m.thin}"/>`;
-        const shareStart = doseAt(e.start, 15 * MINUTE);
-        const doseJustBefore = items.some(
-          (o) =>
-            o.look === 'caffeineDose' &&
-            e.start - o.event.start >= 15 * MINUTE &&
-            e.start - o.event.start < 60 * MINUTE,
-        );
-        if (!shareStart) {
+        // A dose at or just before the start shares the station; the window's own dot and label are dropped.
+        const shared = doseWithin(e.start, 45 * MINUTE, 15 * MINUTE);
+        if (!shared) {
           body += `<circle class="dot" cx="${sideX}" cy="${y0}" r="${m.dot}"/>${icon(item.icon, sideX, y0, m.icon - 4, 'var(--dot-ink)')}`;
-          const [t1, t2] =
-            item.look === 'caffeine' ? [FEED.caffeineFine, FEED.until(clock(plan, e.end))] : [item.title, ''];
-          let ly = y0 + 5 + (doseJustBefore ? line2 : 0);
-          for (const t of wrap(t1, sideRoom, m.font, 2)) {
-            body += `<text class="side-title" x="${sideLabelX}" y="${ly}">${esc(t)}</text>`;
-            ly += line1 - 2;
-          }
-          if (t2 && y1 - y0 >= ly - y0 + m.meta)
-            body += `<text class="side-meta" x="${sideLabelX}" y="${ly}">${esc(fit(t2, sideRoom, m.meta))}</text>`;
+          const lines = wrap(item.look === 'caffeine' ? FEED.caffeineFine : item.title, sideRoom, m.font, 2).map((t) =>
+            line('side-title', t, titleH - 2),
+          );
+          if (item.look === 'caffeine') lines.push(line('side-meta', FEED.until(clock(plan, e.end)), metaH));
+          blocks.push({
+            lane: 'side',
+            top: y0 - m.font * 0.6,
+            maxY: nextStart(sideStarts, e.start),
+            x: sideLabelX,
+            item: i,
+            lines,
+          });
         }
         g(body, `look-${item.look}`);
         break;
@@ -368,29 +439,48 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
       case 'caffeineDose':
       case 'melatonin': {
         const y0 = y(e.start);
-        let body = `<circle class="dot" cx="${sideX}" cy="${y0}" r="${m.dot}"/>${icon(item.icon, sideX, y0, m.icon - 4, 'var(--dot-ink)')}`;
-        body += `<text class="side-title" x="${sideLabelX}" y="${y0 + 5}">${esc(item.look === 'melatonin' ? 'melatonin' : 'caffeine')}</text>`;
-        body += `<text class="side-meta" x="${sideLabelX}" y="${y0 + line1 + 2}">${esc(fit(`${e.note ?? ''}${e.optional ? ` ${FEED.optional}` : ''}`, sideRoom, m.meta))}</text>`;
+        const body = `<circle class="dot" cx="${sideX}" cy="${y0}" r="${m.dot}"/>${icon(item.icon, sideX, y0, m.icon - 4, 'var(--dot-ink)')}`;
         g(body, `look-${item.look}`);
+        blocks.push({
+          lane: 'side',
+          top: y0 - m.font * 0.6,
+          maxY: nextStart(sideStarts, e.start),
+          x: sideLabelX,
+          item: i,
+          lines: [
+            line('side-title', item.look === 'melatonin' ? 'melatonin' : 'caffeine', titleH - 2),
+            line(
+              'side-meta',
+              fitPreferring(
+                [`${e.note ?? ''}${e.optional ? ` ${FEED.optional}` : ''}`, e.note ?? ''],
+                sideRoom,
+                m.meta,
+              ),
+              metaH,
+            ),
+          ],
+        });
         break;
       }
     }
   });
+  svg.push(`<g class="labels">${layout(blocks)}</g>`);
   svg.push('</svg>');
   root.innerHTML = svg.join('');
 
   const rail = root.querySelector('svg')!;
   rail.addEventListener('click', (ev) => {
-    const g = (ev.target as Element).closest<SVGGElement>('g.item');
-    if (!g) return;
-    const item = items[Number(g.dataset.i)];
+    const hit = (ev.target as Element).closest<SVGElement>('[data-i]');
+    if (!hit) return;
+    const i = Number(hit.dataset.i);
+    const g = rail.querySelector<SVGGElement>(`g.item[data-i="${i}"]`)!;
     const already = g.classList.contains('selected');
     rail.querySelectorAll('g.item.selected').forEach((s) => s.classList.remove('selected'));
     if (already) {
       opts.onSelect(null);
     } else {
       g.classList.add('selected');
-      opts.onSelect(item);
+      opts.onSelect(items[i]);
     }
   });
   rail.addEventListener('keydown', (ev) => {
@@ -409,11 +499,11 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     root.appendChild(anchor);
   }
   if (now >= axisStart(plan) && now <= plan.planEnd) {
-    const line = el('div', 'now-line', `<span>${clock(plan, now)}</span>`);
-    line.style.top = `${y(now)}px`;
-    line.style.right = `${rightCol}px`;
-    line.id = 'now';
-    root.appendChild(line);
+    const nowLine = el('div', 'now-line', `<span>${clock(plan, now)}</span>`);
+    nowLine.style.top = `${y(now)}px`;
+    nowLine.style.right = `${rightCol}px`;
+    nowLine.id = 'now';
+    root.appendChild(nowLine);
   }
   return root;
 }

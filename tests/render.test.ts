@@ -56,6 +56,26 @@ describe('feed', () => {
     }
   });
 
+  it('lays labels out without overlaps at any zoom', () => {
+    for (const px of [18, 30, 56, 120]) {
+      for (const width of [390, 760]) {
+        const el = renderFeed(plan, { ...opts(plan.depart), pxPerHour: px, width });
+        const texts = [...el.querySelectorAll<SVGTextElement>('g.labels text')].map((t) => ({
+          x: Number(t.getAttribute('x')),
+          y: Number(t.getAttribute('y')),
+          h: parseFloat(t.classList.contains('seg-title') || t.classList.contains('side-title') ? '16' : '13'),
+        }));
+        const lanes = new Map<number, typeof texts>();
+        for (const t of texts) lanes.set(t.x, [...(lanes.get(t.x) ?? []), t]);
+        for (const lane of lanes.values()) {
+          lane.sort((a, b) => a.y - b.y);
+          for (let i = 1; i < lane.length; i++)
+            expect(lane[i].y - lane[i - 1].y).toBeGreaterThanOrEqual(lane[i - 1].h - 4);
+        }
+      }
+    }
+  });
+
   it('scales lines and text with the hour scale', () => {
     const small = metrics(20, 400);
     const normal = metrics(56, 400);
@@ -72,7 +92,7 @@ describe('feed', () => {
     expect(el.querySelectorAll('g.item').length).toBe(feedItems(plan).length);
     expect(el.querySelectorAll('.day-head').length).toBeGreaterThanOrEqual(8);
     const landing = el.querySelector<SVGTextElement>('text.landing')!;
-    expect(Number(landing.getAttribute('y')) - 5).toBeCloseTo(yOf(plan, plan.arrive, px), 3);
+    expect(Math.abs(Number(landing.getAttribute('y')) - yOf(plan, plan.arrive, px))).toBeLessThan(10);
     expect(landing.textContent).toContain('13:35');
     expect(el.querySelector('#now')).not.toBeNull();
   });
@@ -84,7 +104,7 @@ describe('feed', () => {
     const y2 = Number(sleep.getAttribute('y2'));
     expect(y2 - y1).toBeCloseTo(8 * px - metrics(px, 400).main, 3);
     const guide = el.querySelector('path.guide')!.getAttribute('d')!;
-    expect(guide).toContain('l18,');
+    expect(guide).toMatch(/l\d+,/);
   });
 
   it('switches hour labels to the destination clock after landing', () => {
@@ -96,6 +116,7 @@ describe('feed', () => {
       labels.find((l) => Math.abs(Number(l.getAttribute('y')) - 4 - yOf(plan, t, px)) < 1)?.textContent;
     expect(at(plan.arrive - 95 * 60_000)).toBe('20:00');
     expect(at(plan.arrive + 25 * 60_000)).toBe('14:00');
+    expect(el.querySelector('text.zone-tag')?.textContent).toBe('PDT');
   });
 
   it('marks the active segment', () => {
@@ -111,19 +132,19 @@ describe('feed', () => {
 describe('headline', () => {
   it('writes a note to self with what is next folded in', () => {
     const { text, sub } = composeHeadline(plan, plan.depart - HOUR);
-    expect(text).toBe('sunglasses on until 09:45, then the flight at 10:35.');
-    expect(sub).toContain('to go');
+    expect(text).toBe('Sunglasses on until 09:45, then the flight at 10:35.');
+    expect(sub).toMatch(/^Sunglasses off in 10 min\./);
   });
 
   it('says when there is nothing to do and keeps caffeine as an aside', () => {
     const { text, sub } = composeHeadline(plan, plan.planStart + 3 * HOUR);
-    expect(text).toMatch(/^nothing until 20:00, then bright light\.$/);
+    expect(text).toMatch(/^Nothing until 20:00, then bright light\.$/);
     expect(sub).toContain('Caffeine is fine until');
   });
 
   it('names the evening light in the destination', () => {
     const { text } = composeHeadline(plan, plan.arrive + 5 * HOUR);
-    expect(text).toMatch(/^get outside in the light until 22:00, then/);
+    expect(text).toMatch(/^Get outside in the light until 22:00, then/);
   });
 });
 

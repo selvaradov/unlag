@@ -76,12 +76,21 @@ export const FORM = {
   bed: 'Usual bedtime',
   wake: 'Usual wake time',
   travelWake: 'Wake time on travel day',
+  travelWakePlaceholder: 'as usual',
+  travelWakeHint: 'Leave empty to wake as usual, or four hours before the flight if that is earlier.',
   preflightDays: 'Days to prepare before the flight',
+  preflightHint: 'Bedtime moves up to an hour a day, so more than three days gains little.',
   postDays: 'Days to show after arrival',
+  postHint: 'Most trips are adapted within a week.',
   caffeine: 'Caffeine',
   caffeineOptions: { none: 'Not a regular user', regular: 'Regular user', off: 'Do not suggest' },
   melatonin: 'Melatonin available',
   lightBox: 'Light box available',
+  errors: {
+    arrivalBeforeDeparture: 'Arrival is before departure. Check the dates and the two local times.',
+    sleepZero: 'Bedtime and wake time are the same.',
+    airport: 'Pick both airports from the list.',
+  },
 };
 
 export const DOWNLOAD_ICS = 'Calendar file';
@@ -111,11 +120,20 @@ export const HEADLINE = {
   nextMelatonin: (at: string) => `then melatonin${at}`,
   nextCaffeine: (at: string) => `then caffeine${at}`,
   nothingUntil: (t: string) => `nothing until ${t}`,
-  toGo: (d: string) => `${d} to go.`,
+  // Countdown to the end of the current window, by what happens when it ends.
+  endsIn: {
+    sleep: (d: string) => `Wake in ${d}.`,
+    nap: (d: string) => `Up in ${d}.`,
+    dark: (d: string) => `Sunglasses off in ${d}.`,
+    light: (d: string) => `Light done in ${d}.`,
+    flight: (d: string) => `Landing in ${d}.`,
+  } as Record<string, (d: string) => string>,
+  startsIn: (d: string) => `Starts in ${d}.`,
   caffeineAside: (t: string) => `Caffeine is fine until ${t}.`,
-  notStarted: (day: string) => `your plan starts on ${day}.`,
-  over: 'your plan is over. You should be adapted.',
+  notStarted: (day: string) => `Your plan starts on ${day}.`,
+  over: 'Your plan is over. You should be adapted.',
   optional: 'optional',
+  close: 'Back to now',
 };
 
 export const FEED = {
@@ -133,19 +151,23 @@ export const DAYLIST = {
   noSleep: 'no night',
   depart: 'depart',
   arrive: 'arrive',
+  stripTitle: 'Night, on a noon to noon scale',
 };
 
 export const HEADER = {
   trip: 'Trip',
   plan: 'Plan',
   close: 'Close',
+  cancel: 'Cancel',
   jumpToNow: 'Now',
   pickDay: 'Choose a day',
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
+  zoomHint: 'Double click to reset',
   days: 'Days',
   editTrip: 'Edit trip',
   doneEditing: 'Done',
+  how: 'How this works',
 };
 
 export const SUMMARY = {
@@ -156,8 +178,40 @@ export const SUMMARY = {
       ? `${hours} h behind. Your clock moves later, which is the easy way.`
       : `${hours} h ahead. Your clock moves earlier, which takes longer.`,
   sleep: (bed: string, wake: string) => `Usual sleep ${bed} to ${wake}`,
-  adapted: (day: string) => `Adapted by ${day}`,
+  adapted: (day: string) => `Predicted adapted by ${day}`,
   notAdapted: 'Not fully adapted in the days shown',
+};
+
+// The methodology, in plain words. Shown under "How this works".
+export const METHOD: { title: string; text: string }[] = [
+  {
+    title: 'One point sets everything',
+    text: 'Your body clock has a low point each night, when core temperature is lowest. Call it Tmin. It sits about three hours before your usual wake time, so for a 07:00 riser it is around 04:00. Every instruction is placed relative to Tmin.',
+  },
+  {
+    title: 'Light moves the clock',
+    text: 'Bright light in the hours before Tmin pushes the clock later. Light in the hours after Tmin pushes it earlier. Flying west you need later, so you seek light in the evening and wear sunglasses in the early morning. Flying east it is the reverse. Light eight or more hours from Tmin does little either way.',
+  },
+  {
+    title: 'It moves a bit each day',
+    text: 'Left alone after landing, a body clock delays about an hour and a half a day and advances about an hour. Well timed light adds roughly half an hour. Before the flight there is no drift, so the only gain comes from moving bedtime and getting light at the right time, worth up to an hour a day for a delay and half that for an advance, less with room light than daylight.',
+  },
+  {
+    title: 'Sleep is protected',
+    text: 'Bedtime shifts by up to an hour a day before the flight, but a night is never cut below six and a half hours. If a long day is unavoidable a nap of up to ninety minutes is offered, on the plane where possible, at least eight hours before the next bedtime.',
+  },
+  {
+    title: 'Caffeine and melatonin',
+    text: 'Caffeine is a wakefulness tool with a cutoff before bed, six hours for regular users and eight for others. Melatonin taken in the biological afternoon advances the clock, so for eastward trips it is timed to do that. For westward trips the shifting dose would fall in the biological morning, which is impractical, so it is offered only as an optional sleep aid.',
+  },
+  {
+    title: 'What the prediction means',
+    text: 'The adapted date is when Tmin is predicted to reach its normal place on the destination clock under these rules. Checked against two published circadian oscillator models, one agrees and one is slower by about a day. Treat it as a rough guide, not a promise.',
+  },
+];
+
+export const PICKER = {
+  noMatch: 'No airport matches. Try the code, such as SFO.',
 };
 
 // A readable place name from an IANA zone such as America/Los_Angeles.
@@ -165,7 +219,3 @@ export function zoneCity(zone: string): string {
   const last = zone.split('/').pop() ?? zone;
   return last.replace(/_/g, ' ');
 }
-
-export const PICKER = {
-  noMatch: 'No large airport matches. Try the code, such as SFO.',
-};

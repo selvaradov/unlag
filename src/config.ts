@@ -54,6 +54,8 @@ export const CAFFEINE_CUTOFF_HOURS = { none: 8, regular: 6 };
 export const CAFFEINE_DOSE = { none: '50 to 100 mg', regular: '100 to 200 mg' };
 // Suggest doses only when the waking stretch is at least this long.
 export const CAFFEINE_DOSE_WAKE_HOURS = 18;
+// A dose closer than this to the cutoff is pointless and is not suggested.
+export const CAFFEINE_DOSE_MIN_HOURS_BEFORE_CUTOFF = 1;
 
 // Melatonin. Advances: a small dose in the biological afternoon. Delays: optional sleep aid at bedtime.
 export const MELATONIN_ADVANCE_DOSE = '0.5 mg';
@@ -63,7 +65,7 @@ export const MELATONIN_DELAY_MINUTES_BEFORE_BED = 30;
 export const MELATONIN_NIGHTS = 3;
 
 // Ignore avoid-light fragments shorter than this.
-export const MIN_DARK_FRAGMENT_MINUTES = 20;
+export const MIN_DARK_FRAGMENT_MINUTES = 45;
 
 // Default inputs shown when the page has no query string.
 export const DEFAULT_INPUT = {

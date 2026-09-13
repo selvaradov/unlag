@@ -49,6 +49,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* Keep the gutter so the page does not jump sideways when its height changes. */
+  scrollbar-gutter: stable;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -59,7 +61,6 @@ html {
 
 body {
   margin: 0;
-  overflow-x: clip;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
@@ -72,10 +73,20 @@ button {
   color: inherit;
 }
 
-button:focus-visible,
-.item:focus-visible {
+button:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
+}
+
+/* Feed items show focus and selection as a ring on the station, never a box round the group. */
+.item:focus {
+  outline: none;
+}
+
+.item:focus-visible .station,
+.item:focus-visible .dot {
+  stroke: var(--ink);
+  stroke-width: 3;
 }
 
 h2,
@@ -164,6 +175,31 @@ h3 {
   color: var(--ink);
 }
 
+.headline.selected {
+  position: relative;
+  padding-right: 44px;
+}
+
+.close-selected {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.close-selected .icon {
+  width: 16px;
+  height: 16px;
+}
+
 .opt {
   color: var(--muted);
   font-weight: 400;
@@ -198,6 +234,15 @@ h3 {
 
 .hour-label.other {
   opacity: 0.6;
+}
+
+.hour-label.zone {
+  fill: var(--ink);
+  font-weight: 500;
+}
+
+.labels text {
+  cursor: pointer;
 }
 
 .guide {
@@ -459,47 +504,68 @@ dialog.sheet::backdrop {
   color: var(--muted);
 }
 
-.day-list li.today .date {
-  color: var(--now);
+.day-list li.in-view {
+  background: var(--panel);
+  box-shadow: inset 3px 0 0 var(--ink);
 }
 
-.day-list .date small {
-  display: block;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--muted);
+.day-list .night {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
-.day-list .sleep-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  color: var(--sleep-ink);
+.day-list .strip {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background:
+    linear-gradient(
+      to right,
+      transparent calc(25% - 0.5px),
+      var(--rule) calc(25% - 0.5px),
+      var(--rule) calc(25% + 0.5px),
+      transparent calc(25% + 0.5px)
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(50% - 0.5px),
+      var(--muted) calc(50% - 0.5px),
+      var(--muted) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(75% - 0.5px),
+      var(--rule) calc(75% - 0.5px),
+      var(--rule) calc(75% + 0.5px),
+      transparent calc(75% + 0.5px)
+    ),
+    var(--panel);
+  border: 1px solid var(--rule);
+  overflow: hidden;
+}
+
+.day-list .bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
   background: var(--sleep);
-  border-radius: 999px;
-  padding: 4px 12px 4px 9px;
-  justify-self: start;
+  border-radius: 5px;
 }
 
-.day-list .sleep-pill .icon {
-  width: 14px;
-  height: 14px;
-}
-
-.day-list .flight {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.day-list .times {
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: 0.74rem;
   color: var(--muted);
 }
 
-.day-list .flight .icon {
-  width: 12px;
-  height: 12px;
+.day-list .date small .icon {
+  width: 11px;
+  height: 11px;
+  vertical-align: -1px;
+  margin-right: 2px;
 }
 
 /* Desktop layouts. Two columns with tabs from 900 px, three from 1200 px. */
@@ -580,8 +646,40 @@ dialog.sheet::backdrop {
   color: var(--muted);
 }
 
-.mobile .zone-tags {
-  padding: 0 8px 4px;
+.brand-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.brand-cell .zone-tags {
+  padding: 0;
+  gap: 6px;
+  justify-content: flex-start;
+  font-size: 0.68rem;
+  color: var(--ink);
+}
+
+.brand-cell .zone-right {
+  color: var(--muted);
+}
+
+.brand-cell .zone-right:not([hidden])::before {
+  content: '·';
+  margin-right: 6px;
+}
+
+.mobile .headline {
+  padding: 4px 16px 10px;
+}
+
+.mobile .headline h2 {
+  font-size: 1.2rem;
+}
+
+.mobile .headline .sub {
+  margin-top: 3px;
+  font-size: 0.85rem;
 }
 
 .tabs {
@@ -911,6 +1009,71 @@ dialog.sheet::backdrop {
   min-width: 0;
 }
 
+.trip-form .hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.form-error {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 10px 0 0;
+  color: var(--now);
+  font-size: 0.85rem;
+}
+
+.form-error .icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-top: 1px;
+}
+
+.how {
+  margin-top: 16px;
+  border-top: 1px solid var(--rule);
+  padding-top: 8px;
+}
+
+.how summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.9rem;
+  color: var(--muted);
+  padding: 6px 0;
+}
+
+.how summary::-webkit-details-marker {
+  display: none;
+}
+
+.how summary .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.how h4 {
+  margin: 14px 0 2px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.how p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.how .footer {
+  margin-top: 14px;
+}
+
 .trip-form .checks {
   display: flex;
   gap: 18px;
@@ -921,4 +1084,25 @@ dialog.sheet::backdrop {
   flex-direction: row;
   align-items: center;
   gap: 6px;
+}
+
+/* Day list details */
+
+.day-list .date small {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.day-list li.today .date {
+  color: var(--now);
+}
+
+.hour-label.zone-tag {
+  fill: var(--ink);
+  font-weight: 500;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
 }

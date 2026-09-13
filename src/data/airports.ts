@@ -5,16 +5,24 @@ export interface Airport {
   name: string;
   tz: string;
   country: string;
+  large: boolean;
 }
 
-type Row = [string, string, string, string, string];
+type Row = [string, string, string, string, string, number];
 
 let cache: Airport[] | null = null;
 
 export async function loadAirports(): Promise<Airport[]> {
   if (cache) return cache;
   const rows = (await import('./airports.json')).default as Row[];
-  cache = rows.map(([code, city, name, tz, country]) => ({ code, city, name, tz, country }));
+  cache = rows.map(([code, city, name, tz, country, large]) => ({
+    code,
+    city,
+    name: name || city,
+    tz,
+    country,
+    large: large === 1,
+  }));
   return cache;
 }
 
@@ -49,7 +57,8 @@ export function searchAirports(list: Airport[], query: string, limit = 8): Airpo
       name.split(/\s+/).some((w) => w.startsWith(q)) ? 45 : 0,
       city.includes(q) || name.includes(q) ? 30 : 0,
     ];
-    const s = Math.max(...rules);
+    // Big airports edge out small ones on an equal match.
+    const s = Math.max(...rules) + (a.large ? 2 : 0);
     if (s > 0) scored.push({ a, s });
   }
   scored.sort((x, y) => y.s - x.s || x.a.city.localeCompare(y.a.city));

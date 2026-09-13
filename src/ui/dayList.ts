@@ -1,7 +1,9 @@
-// The list of days. Each row shows the night that follows the day and, on travel days, the flight time.
+// The list of days. Each row shows the night that follows the day on a noon to noon strip,
+// and on travel days the local departure or arrival time.
 import { DateTime } from 'luxon';
 import type { Plan } from '../algorithm/types.ts';
 import { DAYLIST } from '../copy.ts';
+import { HOUR } from '../algorithm/time.ts';
 import { clock, zoneAbbr, zoneAt } from './format.ts';
 import { ICONS } from './icons.ts';
 
@@ -9,7 +11,11 @@ export interface DayRow {
   iso: string;
   label: string;
   zone: string;
+  start: number;
+  end: number;
   sleep: string | null;
+  // Night position on a noon to noon scale, as fractions of the strip.
+  strip: { left: number; width: number } | null;
   // Departure or arrival happening on this local day, with its local time.
   flight: { kind: 'depart' | 'arrive'; time: string } | null;
   today: boolean;
@@ -30,19 +36,31 @@ export function dayRows(plan: Plan, now: number): DayRow[] {
     const noon = day.plus({ hours: 12 }).toMillis();
     const nextNoon = end.plus({ hours: 12 }).toMillis();
     const night = sleeps.find((s) => s.start >= noon && s.start < nextNoon);
+    let strip: DayRow['strip'] = null;
+    if (night) {
+      // The strip runs from the noon before the night to the noon after it, in the night's zone.
+      const nightZone = zoneAt(plan, night.start);
+      const stripStart = DateTime.fromMillis(night.start, { zone: nightZone })
+        .startOf('day')
+        .plus({ hours: 12 })
+        .toMillis();
+      const base = night.start >= stripStart ? stripStart : stripStart - 24 * HOUR;
+      strip = { left: (night.start - base) / (24 * HOUR), width: (night.end - night.start) / (24 * HOUR) };
+    }
     const departs = plan.depart >= t.toMillis() && plan.depart < end.toMillis();
-    const arrives = spansLanding;
     rows.push({
       iso: day.toISODate() ?? '',
       label: day.toFormat('ccc d LLL'),
       zone: zoneAbbr(plan, t.toMillis()),
+      start: t.toMillis(),
+      end: end.toMillis(),
       sleep: night ? `${clock(plan, night.start)} to ${clock(plan, night.end)}` : null,
-      flight:
-        arrives && !departs
+      strip,
+      flight: departs
+        ? { kind: 'depart', time: clock(plan, plan.depart) }
+        : spansLanding
           ? { kind: 'arrive', time: clock(plan, plan.arrive) }
-          : departs
-            ? { kind: 'depart', time: clock(plan, plan.depart) }
-            : null,
+          : null,
       today: now >= t.toMillis() && now < end.toMillis(),
     });
     t = end;
@@ -57,11 +75,15 @@ export function renderDayList(plan: Plan, now: number, onPick: (iso: string) => 
   root.className = 'day-list';
   for (const row of dayRows(plan, now)) {
     const li = document.createElement('li');
+    li.dataset.day = row.iso;
     if (row.today) li.classList.add('today');
     const flight = row.flight
-      ? `<small class="flight">${ICONS.plane}${row.flight.kind === 'depart' ? DAYLIST.depart : DAYLIST.arrive} ${row.flight.time}</small>`
+      ? ` · ${ICONS.plane}${row.flight.kind === 'depart' ? DAYLIST.depart : DAYLIST.arrive} ${row.flight.time}`
       : '';
-    li.innerHTML = `<span class="date">${row.label}<small>${row.zone}</small>${flight}</span>${row.sleep ? `<span class="sleep-pill">${ICONS.bed}${row.sleep}</span>` : `<span class="no-night">${DAYLIST.noSleep}</span>`}`;
+    const night = row.strip
+      ? `<span class="night"><span class="strip" title="${DAYLIST.stripTitle}"><span class="bar" style="left:${(row.strip.left * 100).toFixed(1)}%;width:${(row.strip.width * 100).toFixed(1)}%"></span></span><span class="times">${row.sleep}</span></span>`
+      : `<span class="no-night">${DAYLIST.noSleep}</span>`;
+    li.innerHTML = `<span class="date">${row.label}<small>${row.zone}${flight}</small></span>${night}`;
     li.addEventListener('click', () => onPick(row.iso));
     root.appendChild(li);
   }

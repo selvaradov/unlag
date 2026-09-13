@@ -1,6 +1,7 @@
-// The trip at a glance with the calendar and link actions. While editing, the form takes its place.
+// The trip at a glance with the calendar and link actions and the method behind the plan.
+// While editing, the form takes the card's place with Cancel and Done beneath it.
 import type { Plan, PlanInput } from '../algorithm/types.ts';
-import { COPY_LINK, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, SUMMARY, zoneCity } from '../copy.ts';
+import { COPY_LINK, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, METHOD, SUMMARY, zoneCity } from '../copy.ts';
 import { findAirport, loadAirports } from '../data/airports.ts';
 import { renderForm } from './form.ts';
 import { clock, dayLabel, duration, shortDay, zoneAbbr } from './format.ts';
@@ -28,7 +29,11 @@ function iconButton(iconHtml: string, label: string, cls = ''): HTMLButtonElemen
 
 export interface TripCardOptions {
   editing: boolean;
-  onEditToggle: (editing: boolean) => void;
+  // Whether the method section starts open; true where there is room for it.
+  howOpen: boolean;
+  onEdit: () => void;
+  onCancel: () => void;
+  onDone: () => void;
   onChange: (next: PlanInput) => void;
 }
 
@@ -43,6 +48,27 @@ export function routeTitle(input: PlanInput, el: HTMLElement): void {
   });
 }
 
+export function renderHow(open: boolean): HTMLElement {
+  const details = document.createElement('details');
+  details.className = 'how';
+  details.open = open;
+  const summary = document.createElement('summary');
+  summary.innerHTML = `${ICONS.info}<span>${HEADER.how}</span>`;
+  details.appendChild(summary);
+  for (const { title, text } of METHOD) {
+    const h = document.createElement('h4');
+    h.textContent = title;
+    const p = document.createElement('p');
+    p.textContent = text;
+    details.append(h, p);
+  }
+  const foot = document.createElement('p');
+  foot.className = 'footer';
+  foot.textContent = FOOTER;
+  details.appendChild(foot);
+  return details;
+}
+
 export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptions): HTMLElement {
   const card = document.createElement('section');
   card.className = `trip-card${opts.editing ? ' editing' : ''}`;
@@ -52,11 +78,13 @@ export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptio
     h.textContent = HEADER.editTrip;
     card.appendChild(h);
     card.appendChild(renderForm(input, opts.onChange));
-    const done = iconButton(ICONS.check, HEADER.doneEditing, 'primary');
-    done.addEventListener('click', () => opts.onEditToggle(false));
     const row = document.createElement('div');
     row.className = 'actions';
-    row.appendChild(done);
+    const cancel = iconButton(ICONS.close, HEADER.cancel);
+    cancel.addEventListener('click', () => opts.onCancel());
+    const done = iconButton(ICONS.check, HEADER.doneEditing, 'primary');
+    done.addEventListener('click', () => opts.onDone());
+    row.append(cancel, done);
     card.appendChild(row);
     return card;
   }
@@ -110,13 +138,9 @@ export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptio
     }, 1500);
   });
   const edit = iconButton(ICONS.edit, HEADER.editTrip, 'edit-toggle');
-  edit.addEventListener('click', () => opts.onEditToggle(true));
+  edit.addEventListener('click', () => opts.onEdit());
   actions.append(ics, link, edit);
   card.appendChild(actions);
-
-  const foot = document.createElement('p');
-  foot.className = 'footer';
-  foot.textContent = FOOTER;
-  card.appendChild(foot);
+  card.appendChild(renderHow(opts.howOpen));
   return card;
 }

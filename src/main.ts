@@ -5,7 +5,7 @@ import { generatePlan } from './algorithm/generate.ts';
 import type { Plan, PlanInput } from './algorithm/types.ts';
 import { HOUR } from './algorithm/time.ts';
 import { APP_NAME, HEADER } from './copy.ts';
-import { renderDayList } from './ui/dayList.ts';
+import { dayRows, renderDayList } from './ui/dayList.ts';
 import {
   DEFAULT_PX_PER_HOUR,
   MAX_PX_PER_HOUR,
@@ -33,6 +33,8 @@ let input: PlanInput = readInput(location.search);
 let plan: Plan = generatePlan(input);
 let selected: FeedItem | null = null;
 let editing = false;
+// Inputs as they were when editing began, restored by Cancel.
+let editSnapshot: PlanInput | null = null;
 let tab: 'plan' | 'trip' = 'plan';
 let pxPerHour = readScale();
 
@@ -160,6 +162,12 @@ function attachZoom(feed: HTMLElement): void {
   );
 }
 
+function clearSelection(): void {
+  selected = null;
+  document.querySelectorAll('g.item.selected').forEach((g) => g.classList.remove('selected'));
+  document.querySelector('.headline')?.replaceWith(renderHeadline(plan, Date.now(), null, clearSelection));
+}
+
 function buildFeed(): HTMLElement {
   const host = document.querySelector<HTMLElement>('.feed-host');
   const width = host ? host.clientWidth : Math.min(window.innerWidth, 640);
@@ -170,7 +178,7 @@ function buildFeed(): HTMLElement {
     selected,
     onSelect: (item) => {
       selected = item;
-      document.querySelector('.headline')?.replaceWith(renderHeadline(plan, Date.now(), selected));
+      document.querySelector('.headline')?.replaceWith(renderHeadline(plan, Date.now(), selected, clearSelection));
     },
   });
   attachZoom(feed);
@@ -187,18 +195,36 @@ function replaceFeed(): void {
 function tripCard(): HTMLElement {
   return renderTripCard(plan, input, {
     editing,
-    onEditToggle: (next) => {
-      editing = next;
+    howOpen: WIDE.matches,
+    onEdit: () => {
+      editing = true;
+      editSnapshot = JSON.parse(JSON.stringify(input));
+      tab = 'trip';
+      rerenderKeepingSheet('trip-sheet');
+    },
+    onCancel: () => {
+      if (editSnapshot) applyInput(editSnapshot);
+      editing = false;
+      editSnapshot = null;
+      rerenderKeepingSheet('trip-sheet');
+    },
+    onDone: () => {
+      editing = false;
+      editSnapshot = null;
       rerenderKeepingSheet('trip-sheet');
     },
     onChange: (next) => {
-      input = next;
-      plan = generatePlan(input);
-      history.replaceState(null, '', writeInput(input));
-      selected = null;
+      applyInput(next);
       rerenderKeepingSheet('trip-sheet');
     },
   });
+}
+
+function applyInput(next: PlanInput): void {
+  input = next;
+  plan = generatePlan(input);
+  history.replaceState(null, '', writeInput(input));
+  selected = null;
 }
 
 function rerenderKeepingSheet(cls: string): void {
@@ -225,12 +251,16 @@ function zoomGroup(): HTMLElement {
   out.title = HEADER.zoomOut;
   out.setAttribute('aria-label', HEADER.zoomOut);
   out.addEventListener('click', () => zoomBy(1 / 1.3));
+  out.title = `${HEADER.zoomOut}. ${HEADER.zoomHint}`;
+  out.addEventListener('dblclick', () => zoomBy(DEFAULT_PX_PER_HOUR / pxPerHour));
   const inn = document.createElement('button');
   inn.type = 'button';
   inn.innerHTML = ICONS.zoomIn;
   inn.title = HEADER.zoomIn;
   inn.setAttribute('aria-label', HEADER.zoomIn);
   inn.addEventListener('click', () => zoomBy(1.3));
+  inn.title = `${HEADER.zoomIn}. ${HEADER.zoomHint}`;
+  inn.addEventListener('dblclick', () => zoomBy(DEFAULT_PX_PER_HOUR / pxPerHour));
   wrap.append(out, inn);
   return wrap;
 }
@@ -241,6 +271,14 @@ function zoneTags(): HTMLElement {
   row.className = 'zone-tags';
   row.innerHTML = '<span class="zone-left"></span><span class="zone-right"></span>';
   return row;
+}
+
+function updateInView(): void {
+  const t = timeAtFocus();
+  const row = dayRows(plan, Date.now()).find((r) => t >= r.start && t < r.end);
+  for (const li of document.querySelectorAll<HTMLElement>('.day-list li')) {
+    li.classList.toggle('in-view', !!row && li.dataset.day === row.iso);
+  }
 }
 
 function updateZoneTags(): void {
@@ -337,7 +375,7 @@ function render(): void {
     layout.className = 'layout three';
     const left = document.createElement('aside');
     left.className = 'panel';
-    left.append(brand(), renderHeadline(plan, now, selected), daysBlock(now));
+    left.append(brand(), renderHeadline(plan, now, selected, clearSelection), daysBlock(now));
     const main = document.createElement('main');
     main.className = 'feed-column';
     const host = document.createElement('div');
@@ -355,7 +393,12 @@ function render(): void {
     layout.className = 'layout two';
     const aside = document.createElement('aside');
     aside.className = 'panel';
-    aside.append(brand(), renderHeadline(plan, now, selected), tabs(), tab === 'plan' ? daysBlock(now) : tripCard());
+    aside.append(
+      brand(),
+      renderHeadline(plan, now, selected, clearSelection),
+      tabs(),
+      tab === 'plan' ? daysBlock(now) : tripCard(),
+    );
     const main = document.createElement('main');
     main.className = 'feed-column';
     const host = document.createElement('div');
@@ -376,10 +419,13 @@ function render(): void {
     tripButton.type = 'button';
     tripButton.className = 'trip-button';
     tripButton.innerHTML = `${ICONS.plane}<span>${HEADER.trip}</span>`;
-    header.append(brand(), dayButton, tripButton);
+    const brandCell = document.createElement('span');
+    brandCell.className = 'brand-cell';
+    brandCell.append(brand(), zoneTags());
+    header.append(brandCell, dayButton, tripButton);
     const sticky = document.createElement('div');
     sticky.className = 'sticky';
-    sticky.append(header, renderHeadline(plan, now, selected), zoneTags());
+    sticky.append(header, renderHeadline(plan, now, selected, clearSelection));
     app.appendChild(sticky);
     const host = document.createElement('main');
     host.className = 'feed-host';
@@ -407,12 +453,16 @@ function render(): void {
     const name = document.querySelector('.day-name');
     if (name) name.textContent = currentDayLabel();
     updateZoneTags();
+    updateInView();
   });
 }
 
 render();
 scrollToNow(false);
 
+window.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && selected) clearSelection();
+});
 MEDIUM.addEventListener('change', render);
 WIDE.addEventListener('change', render);
 let resizeTimer = 0;
@@ -433,6 +483,7 @@ window.addEventListener('scroll', () => {
     const name = document.querySelector('.day-name');
     if (name) name.textContent = currentDayLabel();
     updateZoneTags();
+    updateInView();
     ticking = false;
   });
 });

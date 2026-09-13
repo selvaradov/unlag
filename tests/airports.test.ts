@@ -2,13 +2,9 @@ import { describe, expect, it } from 'vitest';
 import rows from '../src/data/airports.json';
 import { type Airport, findAirport, searchAirports } from '../src/data/airports.ts';
 
-const list: Airport[] = (rows as [string, string, string, string, string][]).map(([code, city, name, tz, country]) => ({
-  code,
-  city,
-  name,
-  tz,
-  country,
-}));
+const list: Airport[] = (rows as [string, string, string, string, string, number][]).map(
+  ([code, city, name, tz, country, large]) => ({ code, city, name: name || city, tz, country, large: large === 1 }),
+);
 
 describe('airports', () => {
   it('has the airports for the default trip with their zones', () => {
@@ -22,6 +18,11 @@ describe('airports', () => {
     expect(searchAirports(list, 'SF').map((a) => a.code)).toContain('SFO');
     expect(searchAirports(list, 'heathrow')[0].code).toBe('LHR');
     expect(searchAirports(list, 'lon').map((a) => a.code)).toContain('LHR');
+  });
+
+  it('includes regional airports with scheduled service', () => {
+    expect(findAirport(list, 'BRS')?.city).toBe('Bristol');
+    expect(findAirport(list, 'EXT')?.city).toBe('Exeter');
   });
 
   it('prefers code matches over city matches', () => {

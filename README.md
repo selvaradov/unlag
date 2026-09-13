@@ -27,7 +27,8 @@ curves.
   only as an optional sleep aid, since a dose at bedtime does not move a
   delaying clock.
 
-All constants are in `src/config.ts` and all text in `src/copy.ts`.
+All constants are in `src/config.ts` and all text in `src/copy.ts`, including
+the "How this works" section shown in the app. Icons are from Lucide (ISC).
 
 ## Checking against a circadian model
 
@@ -65,7 +66,7 @@ or the plus and minus buttons.
 
 - `src/algorithm/` pure plan generation in UTC
 - `src/ui/` metro line feed, headline, day list, trip card, form, airport picker, URL state, calendar export
-- `src/data/` large airports with cities and zones, loaded on demand
+- `src/data/` airports with cities and zones, loaded on demand; rebuild with `uv run scripts/build-airports.py` (OurAirports for type, code and scheduled service, OpenFlights for city and zone)
 - `src/config.ts`, `src/copy.ts` constants and copy
 - `tests/` unit and rendering tests
 - `scripts/print-plan.ts` command line plan printer
