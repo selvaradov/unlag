@@ -57,6 +57,23 @@ describe('lookup mapping', () => {
     expect(via.stops).toEqual(['SNN']);
   });
 
+  it('accepts an airport outside the list when the service supplies its zone', () => {
+    const r = mapLookup(
+      {
+        carrier: 'XX',
+        number: '1',
+        date: '2026-01-01',
+        points: [
+          { code: 'ZZZ', city: 'Somewhere', tz: 'Europe/Paris', departure: '2026-01-01T10:00' },
+          { code: 'SFO', arrival: '2026-01-01T12:00' },
+        ],
+      },
+      list,
+    );
+    expect(r.from.city).toBe('Somewhere');
+    expect(r.from.tz).toBe('Europe/Paris');
+  });
+
   it('fails clearly when an airport is not in the list', () => {
     expect(() =>
       mapLookup(

@@ -166,6 +166,7 @@ export const HEADER = {
   zoomHint: 'Double click to reset',
   days: 'Days',
   editTrip: 'Edit trip',
+  newTrip: 'New trip',
   doneEditing: 'Done',
   how: 'How this works',
   howLede:

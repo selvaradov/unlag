@@ -29,6 +29,7 @@ function iconButton(iconHtml: string, label: string, cls = ''): HTMLButtonElemen
 
 export interface TripCardOptions {
   editing: boolean;
+  onNewTrip: () => void;
   onEdit: () => void;
   onCancel: () => void;
   onDone: () => void;
@@ -122,7 +123,9 @@ export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptio
   });
   const edit = iconButton(ICONS.edit, HEADER.editTrip, 'edit-toggle');
   edit.addEventListener('click', () => opts.onEdit());
-  actions.append(ics, link, edit);
+  const fresh = iconButton(ICONS.planeTakeoff, HEADER.newTrip);
+  fresh.addEventListener('click', () => opts.onNewTrip());
+  actions.append(ics, link, edit, fresh);
   card.appendChild(actions);
   card.appendChild(renderHowLede());
   return card;

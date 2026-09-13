@@ -50,20 +50,19 @@ model. The rules are kept as published rather than tuned to either.
 
 Typing a flight number and date fills in the airports and times. The lookup
 runs through a Netlify Function, `netlify/functions/flight.mts`, which calls
-the Amadeus flight schedule API with a key held in environment variables, so
-nothing secret reaches the browser. Without the key the function answers 503
-and the form says lookup is not set up.
+AeroDataBox on RapidAPI with a key held in an environment variable, so nothing
+secret reaches the browser. Without the key the function answers 503 and the
+form says lookup is not set up.
 
-To enable it, create a free app at https://developers.amadeus.com, then:
+To enable it, subscribe to AeroDataBox's Basic plan on RapidAPI, which is free
+with no card and allows 400 units a month, copy the application key, then:
 
 ```
-netlify env:set AMADEUS_CLIENT_ID <id>
-netlify env:set AMADEUS_CLIENT_SECRET <secret>
-netlify env:set AMADEUS_ENV test
+netlify env:set AERODATABOX_KEY <key>
 ```
 
-`AMADEUS_ENV` is `test` for the free sandbox and `production` once the app is
-moved to production in the Amadeus portal. Redeploy after setting them.
+Redeploy after setting it. A lookup costs a few units, so the free plan covers
+roughly a hundred lookups a month.
 
 ## Development
 

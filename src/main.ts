@@ -207,6 +207,7 @@ function replaceFeed(): void {
 function tripCard(): HTMLElement {
   return renderTripCard(plan, input, {
     editing,
+    onNewTrip: startNewTrip,
     onEdit: () => {
       editing = true;
       editSnapshot = JSON.parse(JSON.stringify(input));
@@ -231,10 +232,12 @@ function tripCard(): HTMLElement {
   });
 }
 
-function applyInput(next: PlanInput): void {
+// Edits replace the current history entry; a new plan from the walkthrough adds one.
+function applyInput(next: PlanInput, mode: 'replace' | 'push' = 'replace'): void {
   input = next;
   plan = generatePlan(input);
-  history.replaceState(null, '', writeInput(input));
+  if (mode === 'push') history.pushState(null, '', writeInput(input));
+  else history.replaceState(null, '', writeInput(input));
   selected = null;
 }
 
@@ -482,14 +485,12 @@ function renderWalkthroughPage(): void {
     renderWalkthrough({
       base: defaultInput(),
       onFinish: (next) => {
-        applyInput(next);
-        history.pushState(null, '', writeInput(input));
+        applyInput(next, 'push');
         render();
         scrollToNow(false);
       },
       onExample: () => {
-        applyInput(defaultInput());
-        history.pushState(null, '', writeInput(input));
+        applyInput(defaultInput(), 'push');
         render();
         scrollToNow(false);
       },
@@ -512,6 +513,27 @@ loadAirports()
 window.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && selected) clearSelection();
 });
+
+// Back and forward: the URL is the state, so re-read it and show whichever view it describes.
+window.addEventListener('popstate', () => {
+  selected = null;
+  editing = false;
+  if (hasPlanInUrl(location.search)) {
+    input = readInput(location.search);
+    plan = generatePlan(input);
+    render();
+    scrollToNow(false);
+  } else {
+    renderWalkthroughPage();
+  }
+});
+
+// A new trip is one click from any plan: clear the URL and open the walkthrough.
+function startNewTrip(): void {
+  history.pushState(null, '', location.pathname);
+  renderWalkthroughPage();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
 MEDIUM.addEventListener('change', render);
 WIDE.addEventListener('change', render);
 let resizeTimer = 0;

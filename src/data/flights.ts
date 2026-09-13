@@ -3,6 +3,9 @@ import { type Airport, findAirport, loadAirports } from './airports.ts';
 
 export interface FlightPoint {
   code: string;
+  // City and zone from the lookup service, used when the airport is not in our own list.
+  city?: string;
+  tz?: string;
   departure?: string;
   arrival?: string;
 }
@@ -43,13 +46,22 @@ export function parseFlightNumber(raw: string): { carrier: string; number: strin
   return m ? { carrier: m[1], number: String(Number(m[2])) } : null;
 }
 
+// An airport from our list, or one built from what the lookup service said about it.
+function resolve(point: FlightPoint, airports: Airport[]): Airport | undefined {
+  const known = findAirport(airports, point.code);
+  if (known) return known;
+  if (!point.tz) return undefined;
+  const city = point.city || point.code;
+  return { code: point.code.toUpperCase(), city, name: city, tz: point.tz, country: '', large: false };
+}
+
 // The journey runs from the first departure to the last arrival; intermediate points are stops.
 export function mapLookup(lookup: FlightLookup, airports: Airport[]): FlightResult {
   const points = lookup.points;
   const first = points[0];
   const last = points[points.length - 1];
-  const from = findAirport(airports, first.code);
-  const to = findAirport(airports, last.code);
+  const from = first && resolve(first, airports);
+  const to = last && resolve(last, airports);
   if (!from || !to || !first.departure || !last.arrival) throw new FlightLookupError('unknown-airport');
   return {
     from,
