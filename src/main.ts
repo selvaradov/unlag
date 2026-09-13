@@ -25,9 +25,11 @@ import { defaultInput, hasPlanInUrl, readInput, writeInput } from './ui/state.ts
 import { renderWalkthrough } from './ui/walkthrough.ts';
 import { loadAirports } from './data/airports.ts';
 import { syncSubscription } from './ui/notify.ts';
+import { applyTheme, currentTheme, renderThemeToggle } from './ui/theme.ts';
 import { renderTripCard } from './ui/tripCard.ts';
 
 Settings.defaultLocale = 'en-GB';
+applyTheme(currentTheme());
 
 // The service worker updates itself; when a new one takes over, the page reloads so nobody is left
 // on a stale build. Returning to the tab or app also checks for a new worker.
@@ -401,11 +403,14 @@ function newTripButton(cls = ''): HTMLButtonElement {
   return b;
 }
 
-// Brand on the left, New trip on the right, at the top of a side panel.
+// Brand on the left, theme toggle and New trip on the right, at the top of a side panel.
 function panelHead(): HTMLElement {
   const head = document.createElement('div');
   head.className = 'panel-head';
-  head.append(brand(), newTripButton());
+  const tools = document.createElement('div');
+  tools.className = 'tools';
+  tools.append(renderThemeToggle(), newTripButton());
+  head.append(brand(), tools);
   return head;
 }
 
@@ -526,7 +531,10 @@ function render(): void {
       'day-sheet',
     );
     const sheetBody = document.createElement('div');
-    sheetBody.append(newTripButton('in-sheet'), tripCard());
+    const sheetTools = document.createElement('div');
+    sheetTools.className = 'sheet-tools';
+    sheetTools.append(newTripButton('in-sheet'), renderThemeToggle());
+    sheetBody.append(sheetTools, tripCard());
     const tripSheet = sheet(HEADER.trip, sheetBody, 'trip-sheet');
     app.append(daySheet, tripSheet);
     dayButton.addEventListener('click', () => daySheet.showModal());

@@ -20,6 +20,7 @@ import plane from 'lucide-static/icons/plane.svg?raw';
 import planeLanding from 'lucide-static/icons/plane-landing.svg?raw';
 import planeTakeoff from 'lucide-static/icons/plane-takeoff.svg?raw';
 import sun from 'lucide-static/icons/sun.svg?raw';
+import sunMoon from 'lucide-static/icons/sun-moon.svg?raw';
 import x from 'lucide-static/icons/x.svg?raw';
 import zoomIn from 'lucide-static/icons/zoom-in.svg?raw';
 import zoomOut from 'lucide-static/icons/zoom-out.svg?raw';
@@ -40,6 +41,7 @@ function prepare(svg: string, extraClass = '', slash = false): string {
 
 export const ICONS = {
   sun: prepare(sun),
+  sunMoon: prepare(sunMoon),
   glasses: prepare(glasses),
   cup: prepare(coffee),
   noCup: prepare(coffee, '', true),

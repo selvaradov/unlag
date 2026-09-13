@@ -24,8 +24,9 @@
   --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
+/* Dark tokens apply when the system is dark and no light choice was made, or when dark was chosen. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #14151a;
     --ink: #e8e7e2;
     --muted: #8d8f96;
@@ -45,6 +46,32 @@
     --now: #f06b5a;
     --flight-band: rgb(154 156 164 / 0.1);
   }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #14151a;
+  --ink: #e8e7e2;
+  --muted: #8d8f96;
+  --rule: #2a2c33;
+  --panel: #1c1e25;
+  --light: #f2a23c;
+  --light-ink: #2a1600;
+  --sleep: #7fb3bf;
+  --sleep-ink: #0b1f24;
+  --nap: #3f6b75;
+  --avoid: #e09a3e;
+  --caffeine: #b58b6c;
+  --caffeine-ink: #1c120a;
+  --melatonin: #c98ab8;
+  --melatonin-ink: #22101c;
+  --flight: #9a9ca4;
+  --now: #f06b5a;
+  --flight-band: rgb(154 156 164 / 0.1);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 * {
@@ -1512,4 +1539,52 @@ dialog.sheet::backdrop {
 .notify.impossible .icon-button[disabled] {
   opacity: 0.45;
   cursor: default;
+}
+
+/* Theme toggle */
+
+.theme-toggle {
+  display: inline-flex;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.theme-toggle button {
+  width: 30px;
+  height: 26px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.theme-toggle button + button {
+  border-left: 1px solid var(--rule);
+}
+
+.theme-toggle button[aria-pressed='true'] {
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.theme-toggle .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.panel-head .tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sheet-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
 }

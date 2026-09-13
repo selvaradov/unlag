@@ -3,7 +3,9 @@ import './fonts.css';
 import './style.css';
 import { APP_NAME, FOOTER, HEADER, METHOD } from './copy.ts';
 import { ICONS } from './ui/icons.ts';
+import { applyTheme, currentTheme } from './ui/theme.ts';
 
+applyTheme(currentTheme());
 const root = document.getElementById('how')!;
 const back = `/${location.search}`;
 root.className = 'how-page';

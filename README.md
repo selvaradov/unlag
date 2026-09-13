@@ -82,6 +82,9 @@ instructions on a noon to noon strip. The hour scale zooms by pinch, ctrl and
 wheel, or the magnifier buttons, and is remembered.
 
 Theme: paper and ink, IBM Plex Sans and Mono self hosted, icons from Lucide.
+Light and dark follow the system by default; a toggle in the panel head (or the
+Trip sheet on phones) fixes light or dark, remembered on the device and applied
+before the first paint.
 
 ## Flight lookup
 

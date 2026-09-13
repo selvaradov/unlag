@@ -276,6 +276,16 @@ export const NOTIFY = {
   } as Record<string, string>,
 };
 
+export const THEME = {
+  label: 'Appearance',
+  light: 'Light',
+  auto: 'Follow the system',
+  dark: 'Dark',
+  // Page grounds, matching the tokens in style.css, for the browser chrome colour.
+  lightGround: '#fafaf7',
+  darkGround: '#14151a',
+};
+
 export const PICKER = {
   noMatch: 'No airport matches. Try the code, such as SFO.',
 };
