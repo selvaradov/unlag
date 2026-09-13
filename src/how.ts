@@ -20,7 +20,7 @@ root.innerHTML = `
     <h2 class="detail-title">${METHOD_DETAIL.title}</h2>
     <p>${METHOD_DETAIL.intro}</p>
     ${METHOD_DETAIL.steps.map(({ title, code }) => `<h3>${title}</h3><pre>${code}</pre>`).join('')}
-    <p class="footer">${FOOTER} <a href="${HEADER.licencesHref}">${HEADER.licences}</a>.</p>
-    <p class="footer credit">${CREDIT}</p>
+    <p class="footer">${FOOTER}</p>
+    <p class="footer credit">${CREDIT} <a href="${HEADER.licencesHref}">${HEADER.licences}</a>.</p>
   </main>
 `;

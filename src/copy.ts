@@ -107,7 +107,7 @@ export const REFERENCES = {
   // Burgess et al. 2010, human phase response curves to three days of daily melatonin.
   melatoninPrc: 'https://doi.org/10.1210/jc.2009-2590',
 };
-export const FOOTER = `Rules from <a href="${REFERENCES.burgess}">Burgess, Using bright light and melatonin to reduce jet lag</a>, and the <a href="${REFERENCES.lightPrc}">light</a> and <a href="${REFERENCES.melatoninPrc}">melatonin</a> phase response curves. Not medical advice. <a href="${SOURCE_URL}">Source</a>.`;
+export const FOOTER = `Rules from <a href="${REFERENCES.burgess}">Burgess, Using bright light and melatonin to reduce jet lag</a>, and the <a href="${REFERENCES.lightPrc}">light</a> and <a href="${REFERENCES.melatoninPrc}">melatonin</a> phase response curves. Not medical advice.`;
 
 export const HEADLINE = {
   nowSleep: (until: string) => `sleep until ${until}`,
@@ -295,13 +295,12 @@ export const THEME = {
   darkGround: '#14151a',
 };
 
-export const CREDIT = 'Written by Claude Fable 5.1.';
+export const CREDIT = `Written by Claude Fable 5.1. Source code <a href="${SOURCE_URL}">here</a>.`;
 
 // The algorithm, step by step, for the method page. Plain words with the shape of code.
 export const METHOD_DETAIL = {
   title: 'The algorithm, step by step',
-  intro:
-    'This is what the generator in src/algorithm/generate.ts does, in the order it does it. Every time is an instant in UTC; only the display turns instants into local clocks.',
+  intro: `This is what <a href="${SOURCE_URL}/blob/main/src/algorithm/generate.ts">the generator</a> does, in the order it does it. Every time is an instant in UTC; only the display turns instants into local clocks.`,
   steps: [
     {
       title: '1. Set up',

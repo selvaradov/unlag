@@ -81,7 +81,7 @@ export function renderWalkthrough(opts: WalkthroughOptions): HTMLElement {
   root.appendChild(example);
   const credit = document.createElement('p');
   credit.className = 'footer credit';
-  credit.textContent = CREDIT;
+  credit.innerHTML = CREDIT;
   root.appendChild(credit);
 
   const show = () => {
