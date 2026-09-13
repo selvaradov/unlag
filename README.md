@@ -1,7 +1,7 @@
 # Unlag
 
-A jet lag planner in the style of Timeshifter. Give it a flight and your usual
-sleep times and it produces a day by day schedule of sleep, light, caffeine and
+A jet lag planner in the style of Timeshifter. Pick the airports, give it the flight
+times and your usual sleep, and it produces a day by day schedule of sleep, light, caffeine and
 melatonin. Everything runs in the browser and the plan lives in the URL, so a
 link is a plan. Hosted at https://unlag.selvaradov.net.
 
@@ -64,7 +64,8 @@ or the plus and minus buttons.
 ## Layout
 
 - `src/algorithm/` pure plan generation in UTC
-- `src/ui/` metro line feed, headline, day list, trip card, form, URL state, calendar export
+- `src/ui/` metro line feed, headline, day list, trip card, form, airport picker, URL state, calendar export
+- `src/data/` large airports with cities and zones, loaded on demand
 - `src/config.ts`, `src/copy.ts` constants and copy
 - `tests/` unit and rendering tests
 - `scripts/print-plan.ts` command line plan printer
