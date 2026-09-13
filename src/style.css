@@ -1,0 +1,341 @@
+:root {
+  color-scheme: light dark;
+  --bg: #fbfaf7;
+  --fg: #1d1d1b;
+  --muted: #6b6a66;
+  --rule: #d9d6cf;
+  --panel: #f1efe9;
+  --accent: #b8541c;
+  --sleep: #3a4a63;
+  --nap: #8b98ad;
+  --flight: #c9cdd6;
+  --light: #f2c14e;
+  --dark: #5a5d75;
+  --caffeine: #a06b3c;
+  --melatonin: #7b5ea7;
+  --tmin: #1d1d1b;
+  --now: #b8541c;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15161a;
+    --fg: #e8e6e1;
+    --muted: #9a998f;
+    --rule: #2e3037;
+    --panel: #1e2026;
+    --accent: #e0854a;
+    --sleep: #6f83a8;
+    --nap: #4d5a72;
+    --flight: #3d414c;
+    --light: #e3b23c;
+    --dark: #8d90ad;
+    --caffeine: #c08a58;
+    --melatonin: #a58bd1;
+    --tmin: #e8e6e1;
+    --now: #e0854a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+#app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+header h1 {
+  font-size: 1.25rem;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.tagline,
+.summary,
+footer {
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+.now-next {
+  margin: 20px 0 12px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+}
+
+.now-next .label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.now-next strong {
+  font-size: 1.15rem;
+}
+
+.now-next .until,
+.now-next .also {
+  color: var(--muted);
+}
+
+.now-next p {
+  margin: 4px 0 0;
+}
+
+.trip-form {
+  margin: 16px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 8px 0;
+}
+
+.trip-form summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.trip-form .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px 16px;
+  margin: 12px 0;
+}
+
+.trip-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.trip-form input,
+.trip-form select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.trip-form .checks {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.trip-form .checks label {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.timeline h3,
+.text-list h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 18px 0 2px;
+}
+
+.row-scroll {
+  overflow-x: auto;
+}
+
+.row {
+  display: block;
+}
+
+.axis {
+  stroke: var(--rule);
+  stroke-width: 1;
+}
+
+.tick {
+  font-size: 9px;
+  fill: var(--muted);
+  text-anchor: middle;
+}
+
+.tick.zone-change {
+  fill: var(--accent);
+  font-weight: 600;
+}
+
+.ev-sleep {
+  fill: var(--sleep);
+}
+
+.ev-nap {
+  fill: var(--nap);
+}
+
+.ev-flight {
+  fill: var(--flight);
+}
+
+.ev-light {
+  fill: var(--light);
+}
+
+.ev-dark {
+  fill: var(--dark);
+}
+
+.ev-caffeine {
+  fill: var(--caffeine);
+  opacity: 0.55;
+}
+
+.ev-caffeineDose {
+  fill: var(--caffeine);
+}
+
+.ev-melatonin {
+  fill: var(--melatonin);
+}
+
+.ev.optional {
+  opacity: 0.6;
+}
+
+.tmin {
+  fill: var(--tmin);
+}
+
+.now-line {
+  stroke: var(--now);
+  stroke-width: 1.5;
+}
+
+.legend {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+.swatch.ev-sleep {
+  background: var(--sleep);
+}
+.swatch.ev-nap {
+  background: var(--nap);
+}
+.swatch.ev-flight {
+  background: var(--flight);
+}
+.swatch.ev-light {
+  background: var(--light);
+}
+.swatch.ev-dark {
+  background: var(--dark);
+}
+.swatch.ev-caffeine {
+  background: var(--caffeine);
+}
+.swatch.ev-melatonin {
+  background: var(--melatonin);
+  border-radius: 50%;
+}
+.swatch.tmin-swatch {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 10px solid var(--tmin);
+  border-radius: 0;
+}
+
+.text-list {
+  margin-top: 28px;
+  border-top: 1px solid var(--rule);
+}
+
+.text-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.text-list li {
+  display: grid;
+  grid-template-columns: 7.5em 1fr;
+  gap: 0 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.text-list li .detail {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.text-list li.past {
+  opacity: 0.5;
+}
+
+.text-list li.optional strong::after {
+  content: ' (optional)';
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.text-list .when {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+
+.actions button {
+  font: inherit;
+  padding: 8px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+footer {
+  font-size: 0.8rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 12px;
+}
