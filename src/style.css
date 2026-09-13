@@ -14,6 +14,7 @@
   --caffeine: #7a4b2a;
   --caffeine-ink: #f7efe8;
   --melatonin: #8a3f74;
+  --melatonin-ink: #fbf3f8;
   --flight: #6d7078;
   --now: #d94f3d;
   --flight-band: rgb(109 112 120 / 0.07);
@@ -39,6 +40,7 @@
     --caffeine: #b58b6c;
     --caffeine-ink: #1c120a;
     --melatonin: #c98ab8;
+    --melatonin-ink: #22101c;
     --flight: #9a9ca4;
     --now: #f06b5a;
     --flight-band: rgb(154 156 164 / 0.1);
@@ -402,7 +404,7 @@ h3 {
 }
 
 .look-melatonin {
-  color: #fff;
+  color: var(--melatonin-ink);
 }
 
 .seg-title,
