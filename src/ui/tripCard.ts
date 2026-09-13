@@ -1,8 +1,8 @@
 // The trip at a glance with the calendar and link actions and the method behind the plan.
 // While editing, the form takes the card's place with Cancel and Done beneath it.
 import type { Plan, PlanInput } from '../algorithm/types.ts';
-import { COPY_LINK, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, METHOD, SUMMARY, zoneCity } from '../copy.ts';
-import { findAirport, loadAirports } from '../data/airports.ts';
+import { COPY_LINK, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, SUMMARY, zoneCity } from '../copy.ts';
+import { airportsNow, findAirport } from '../data/airports.ts';
 import { renderForm } from './form.ts';
 import { clock, dayLabel, duration, shortDay, zoneAbbr } from './format.ts';
 import { ICONS } from './icons.ts';
@@ -29,44 +29,27 @@ function iconButton(iconHtml: string, label: string, cls = ''): HTMLButtonElemen
 
 export interface TripCardOptions {
   editing: boolean;
-  // Whether the method section starts open; true where there is room for it.
-  howOpen: boolean;
   onEdit: () => void;
   onCancel: () => void;
   onDone: () => void;
   onChange: (next: PlanInput) => void;
 }
 
-// Route title from airport cities when known, else from the zones. Fills in once the list has loaded.
+// Route title from airport cities when the list is loaded, else from the zones.
 export function routeTitle(input: PlanInput, el: HTMLElement): void {
-  el.textContent = SUMMARY.route(zoneCity(input.homeZone), zoneCity(input.destZone));
-  if (!input.homeAirport || !input.destAirport) return;
-  void loadAirports().then((list) => {
-    const a = findAirport(list, input.homeAirport!);
-    const b = findAirport(list, input.destAirport!);
-    if (a && b) el.textContent = SUMMARY.route(a.city, b.city);
-  });
+  const list = airportsNow();
+  const a = list && input.homeAirport ? findAirport(list, input.homeAirport) : undefined;
+  const b = list && input.destAirport ? findAirport(list, input.destAirport) : undefined;
+  el.textContent =
+    a && b ? SUMMARY.route(a.city, b.city) : SUMMARY.route(zoneCity(input.homeZone), zoneCity(input.destZone));
 }
 
-export function renderHow(open: boolean): HTMLElement {
-  const details = document.createElement('details');
-  details.className = 'how';
-  details.open = open;
-  const summary = document.createElement('summary');
-  summary.innerHTML = `${ICONS.info}<span>${HEADER.how}</span>`;
-  details.appendChild(summary);
-  for (const { title, text } of METHOD) {
-    const h = document.createElement('h4');
-    h.textContent = title;
-    const p = document.createElement('p');
-    p.textContent = text;
-    details.append(h, p);
-  }
-  const foot = document.createElement('p');
-  foot.className = 'footer';
-  foot.textContent = FOOTER;
-  details.appendChild(foot);
-  return details;
+// A short lede and a link to the page that explains the method.
+export function renderHowLede(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'how-lede';
+  wrap.innerHTML = `${ICONS.info}<p>${HEADER.howLede} <a href="${HEADER.howHref}">${HEADER.how}</a></p><p class="footer">${FOOTER}</p>`;
+  return wrap;
 }
 
 export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptions): HTMLElement {
@@ -141,6 +124,6 @@ export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptio
   edit.addEventListener('click', () => opts.onEdit());
   actions.append(ics, link, edit);
   card.appendChild(actions);
-  card.appendChild(renderHow(opts.howOpen));
+  card.appendChild(renderHowLede());
   return card;
 }

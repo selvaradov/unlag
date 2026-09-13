@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  build: { rollupOptions: { input: { index: 'index.html', how: 'how.html' } } },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -15,7 +16,11 @@ export default defineConfig({
         display: 'standalone',
         icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,woff2}'], navigateFallback: 'index.html' },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/how/],
+      },
     }),
   ],
 });

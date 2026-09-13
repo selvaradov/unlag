@@ -21,6 +21,7 @@ import { dayLabel, zoneAbbr, zoneAt } from './ui/format.ts';
 import { renderHeadline } from './ui/headline.ts';
 import { ICONS } from './ui/icons.ts';
 import { readInput, writeInput } from './ui/state.ts';
+import { loadAirports } from './data/airports.ts';
 import { renderTripCard } from './ui/tripCard.ts';
 
 Settings.defaultLocale = 'en-GB';
@@ -168,6 +169,15 @@ function clearSelection(): void {
   document.querySelector('.headline')?.replaceWith(renderHeadline(plan, Date.now(), null, clearSelection));
 }
 
+// Hour labels within a label's height of the now line give way to it.
+function hideLabelsUnderNow(): void {
+  const nowY = yOf(plan, Date.now(), pxPerHour);
+  for (const label of document.querySelectorAll<SVGTextElement>('.feed text.hour-label:not(.other)')) {
+    const yy = Number(label.dataset.y);
+    label.style.visibility = Math.abs(yy - nowY) < 14 ? 'hidden' : '';
+  }
+}
+
 function buildFeed(): HTMLElement {
   const host = document.querySelector<HTMLElement>('.feed-host');
   const width = host ? host.clientWidth : Math.min(window.innerWidth, 640);
@@ -182,6 +192,7 @@ function buildFeed(): HTMLElement {
     },
   });
   attachZoom(feed);
+  requestAnimationFrame(hideLabelsUnderNow);
   return feed;
 }
 
@@ -195,7 +206,6 @@ function replaceFeed(): void {
 function tripCard(): HTMLElement {
   return renderTripCard(plan, input, {
     editing,
-    howOpen: WIDE.matches,
     onEdit: () => {
       editing = true;
       editSnapshot = JSON.parse(JSON.stringify(input));
@@ -281,8 +291,13 @@ function updateInView(): void {
   }
 }
 
+// The tags switch when the landing break scrolls past the top of the feed's sticky chrome.
 function updateZoneTags(): void {
-  const t = timeAtFocus();
+  const breakY = feedTop() + yOf(plan, plan.arrive, pxPerHour) - window.scrollY;
+  const chrome = MEDIUM.matches
+    ? (document.querySelector<HTMLElement>('.toolbar')?.getBoundingClientRect().bottom ?? 0)
+    : stickyHeight();
+  const t = breakY <= chrome ? plan.arrive : plan.arrive - 1;
   const zone = zoneAt(plan, t);
   const other = zone === plan.input.homeZone ? plan.input.destZone : plan.input.homeZone;
   const left = document.querySelector('.zone-left');
@@ -457,8 +472,13 @@ function render(): void {
   });
 }
 
-render();
-scrollToNow(false);
+// Airport names are part of the first paint, so the list loads before the first render.
+loadAirports()
+  .catch(() => null)
+  .then(() => {
+    render();
+    scrollToNow(false);
+  });
 
 window.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && selected) clearSelection();
@@ -497,5 +517,6 @@ setInterval(() => {
     line.style.top = `${yOf(plan, now, pxPerHour)}px`;
     line.querySelector('span')!.textContent = DateTime.fromMillis(now, { zone: zoneAt(plan, now) }).toFormat('HH:mm');
   }
+  hideLabelsUnderNow();
   if (Math.floor(now / HOUR) !== Math.floor((now - 60_000) / HOUR)) replaceFeed();
 }, 60_000);

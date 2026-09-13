@@ -16,6 +16,7 @@
   --melatonin: #8a3f74;
   --flight: #6d7078;
   --now: #d94f3d;
+  --flight-band: rgb(109 112 120 / 0.07);
   --station-ink: currentColor;
   --dot-ink: currentColor;
   --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -40,6 +41,7 @@
     --melatonin: #c98ab8;
     --flight: #9a9ca4;
     --now: #f06b5a;
+    --flight-band: rgb(154 156 164 / 0.1);
   }
 }
 
@@ -249,6 +251,28 @@ h3 {
   fill: none;
   stroke: var(--rule);
   stroke-width: 2;
+}
+
+.flight-band {
+  fill: var(--flight-band);
+}
+
+.zone-break {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+
+.zone-break-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  fill: var(--ink);
+  letter-spacing: 0.06em;
+}
+
+.zone-break-label.other {
+  fill: var(--muted);
 }
 
 .item {
@@ -490,18 +514,12 @@ dialog.sheet::backdrop {
 
 .day-list li {
   display: grid;
-  grid-template-columns: 8em 1fr;
+  grid-template-columns: 7.5em 1fr;
   align-items: center;
   gap: 10px;
-  padding: 7px 2px;
+  padding: 8px 6px 8px 12px;
   border-bottom: 1px solid var(--rule);
   cursor: pointer;
-}
-
-.day-list .no-night {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  color: var(--muted);
 }
 
 .day-list li.in-view {
@@ -509,17 +527,56 @@ dialog.sheet::backdrop {
   box-shadow: inset 3px 0 0 var(--ink);
 }
 
-.day-list .night {
+.day-list li.today .date {
+  color: var(--now);
+}
+
+.day-list .date small {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.day-list .date small .icon {
+  width: 11px;
+  height: 11px;
+  vertical-align: -1px;
+  margin-right: 2px;
+}
+
+.day-axis {
+  display: grid;
+  grid-template-columns: 7.5em 1fr;
+  gap: 10px;
+  padding: 0 6px 4px 12px;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--muted);
+}
+
+.day-axis .caption {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+}
+
+.day-axis .ticks {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
+  justify-content: space-between;
+}
+
+.day-axis .ticks span {
+  width: 0;
+  display: flex;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .day-list .strip {
   position: relative;
-  height: 10px;
-  border-radius: 5px;
+  height: 14px;
+  border-radius: 3px;
   background:
     linear-gradient(
       to right,
@@ -551,21 +608,24 @@ dialog.sheet::backdrop {
   position: absolute;
   top: 0;
   bottom: 0;
+  border-radius: 2px;
+}
+
+.day-list .bar.look-sleep {
   background: var(--sleep);
-  border-radius: 5px;
 }
 
-.day-list .times {
-  font-family: var(--mono);
-  font-size: 0.74rem;
-  color: var(--muted);
+.day-list .bar.look-nap {
+  background: var(--nap);
 }
 
-.day-list .date small .icon {
-  width: 11px;
-  height: 11px;
-  vertical-align: -1px;
-  margin-right: 2px;
+.day-list .bar.look-light {
+  background: var(--light);
+}
+
+.day-list .bar.look-dark {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--avoid);
 }
 
 /* Desktop layouts. Two columns with tabs from 900 px, three from 1200 px. */
@@ -591,8 +651,6 @@ dialog.sheet::backdrop {
   position: sticky;
   top: 0;
   align-self: start;
-  max-height: 100vh;
-  overflow-y: auto;
   padding: 24px 4px 24px 0;
   display: flex;
   flex-direction: column;
@@ -1029,6 +1087,80 @@ dialog.sheet::backdrop {
   height: 16px;
   flex: none;
   margin-top: 1px;
+}
+
+.how-lede {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 8px;
+  margin-top: 16px;
+  border-top: 1px solid var(--rule);
+  padding-top: 12px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.how-lede .icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.how-lede p {
+  margin: 0;
+}
+
+.how-lede a {
+  color: var(--ink);
+}
+
+.how-lede .footer {
+  grid-column: 2;
+  margin-top: 8px;
+}
+
+.how-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 20px 60px;
+}
+
+.how-page .top {
+  grid-template-columns: 1fr auto;
+  padding: 16px 0 0;
+}
+
+.how-page .back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.how-page .back .icon {
+  width: 16px;
+  height: 16px;
+  transform: rotate(90deg);
+}
+
+.how-page h1 {
+  font-weight: 300;
+  font-size: 2rem;
+  margin: 28px 0 8px;
+}
+
+.how-page h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 26px 0 4px;
+}
+
+.how-page p {
+  margin: 0;
+  line-height: 1.6;
+  max-width: 62ch;
 }
 
 .how {

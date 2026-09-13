@@ -92,7 +92,8 @@ describe('feed', () => {
     expect(el.querySelectorAll('g.item').length).toBe(feedItems(plan).length);
     expect(el.querySelectorAll('.day-head').length).toBeGreaterThanOrEqual(8);
     const landing = el.querySelector<SVGTextElement>('text.landing')!;
-    expect(Math.abs(Number(landing.getAttribute('y')) - yOf(plan, plan.arrive, px))).toBeLessThan(10);
+    expect(Number(landing.getAttribute('y')) - yOf(plan, plan.arrive, px)).toBeGreaterThan(6);
+    expect(Number(landing.getAttribute('y')) - yOf(plan, plan.arrive, px)).toBeLessThan(30);
     expect(landing.textContent).toContain('13:35');
     expect(el.querySelector('#now')).not.toBeNull();
   });
@@ -116,7 +117,8 @@ describe('feed', () => {
       labels.find((l) => Math.abs(Number(l.getAttribute('y')) - 4 - yOf(plan, t, px)) < 1)?.textContent;
     expect(at(plan.arrive - 95 * 60_000)).toBe('20:00');
     expect(at(plan.arrive + 25 * 60_000)).toBe('14:00');
-    expect(el.querySelector('text.zone-tag')?.textContent).toBe('PDT');
+    expect(el.querySelector('text.zone-break-label')?.textContent).toBe('PDT');
+    expect(el.querySelector('rect.flight-band')).not.toBeNull();
   });
 
   it('marks the active segment', () => {

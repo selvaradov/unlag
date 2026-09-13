@@ -285,9 +285,9 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     `<svg class="rail" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="--feed-font:${m.font}px;--feed-meta:${m.meta}px" xmlns="http://www.w3.org/2000/svg">`,
   );
 
-  // Hour grid and day labels. The first labelled hour after landing names the new zone.
-  let zoneShown = false;
-  for (const mk of hourMarks(plan)) {
+  // Hour grid and day labels.
+  const marks = hourMarks(plan);
+  for (const mk of marks) {
     const yy = y(mk.t);
     if (mk.dayStart) {
       svg.push(`<line class="hour-line day-line" x1="${LEFT_COL}" x2="${width - rightCol}" y1="${yy}" y2="${yy}"/>`);
@@ -302,27 +302,40 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
       `<line class="hour-line${labelled ? '' : ' minor'}" x1="${LEFT_COL}" x2="${width - rightCol}" y1="${yy}" y2="${yy}"/>`,
     );
     if (labelled) {
-      // The first labelled hour after landing carries the new zone above it.
-      if (mk.t >= plan.arrive && !zoneShown) {
-        svg.push(
-          `<text class="hour-label zone-tag" x="${LEFT_COL - 8}" y="${yy - 8}" text-anchor="end">${zoneAbbr(plan, mk.t)}</text>`,
-        );
-        zoneShown = true;
-      }
-      svg.push(`<text class="hour-label" x="${LEFT_COL - 8}" y="${yy + 4}" text-anchor="end">${mk.label}</text>`);
+      // Labels carry their y so the now line can hide the one it would cover.
+      svg.push(
+        `<text class="hour-label" data-y="${yy}" x="${LEFT_COL - 8}" y="${yy + 4}" text-anchor="end">${mk.label}</text>`,
+      );
       if (!narrow)
-        svg.push(`<text class="hour-label other" x="${width - rightCol + 8}" y="${yy + 4}">${mk.other}</text>`);
+        svg.push(
+          `<text class="hour-label other" data-y="${yy}" x="${width - rightCol + 8}" y="${yy + 4}">${mk.other}</text>`,
+        );
     }
   }
 
-  // Guide line with the flight kink.
+  // Guide line with the flight kink. The flight span is shaded, and the axis breaks at landing
+  // where the clock changes, with the zone names at either end of the break.
   const yDep = y(plan.depart);
   const yArr = y(plan.arrive);
   const bend = Math.min(10, (yArr - yDep) / 4);
+  const gap = 7;
   svg.push(
-    `<path class="guide" d="M${mainX},${FEED_PAD_TOP} V${yDep} l${m.kink},${bend} V${yArr - bend} l${-m.kink},${bend} V${height}"/>`,
+    `<rect class="flight-band" x="${LEFT_COL}" y="${yDep}" width="${width - rightCol - LEFT_COL}" height="${yArr - yDep}"/>`,
   );
-  svg.push(`<line class="guide" x1="${sideX}" x2="${sideX}" y1="${FEED_PAD_TOP}" y2="${height}"/>`);
+  svg.push(
+    `<path class="guide" d="M${mainX},${FEED_PAD_TOP} V${yDep} l${m.kink},${bend} V${yArr - bend - gap} M${mainX},${yArr + gap} V${height}"/>`,
+  );
+  svg.push(`<line class="guide" x1="${sideX}" x2="${sideX}" y1="${FEED_PAD_TOP}" y2="${yArr - gap}"/>`);
+  svg.push(`<line class="guide" x1="${sideX}" x2="${sideX}" y1="${yArr + gap}" y2="${height}"/>`);
+  svg.push(`<line class="zone-break" x1="${LEFT_COL - 4}" x2="${width - rightCol + 4}" y1="${yArr}" y2="${yArr}"/>`);
+  svg.push(
+    `<text class="zone-break-label" x="${LEFT_COL - 8}" y="${yArr + 4}" text-anchor="end">${zoneAbbr(plan, plan.arrive)}</text>`,
+  );
+  if (!narrow) {
+    svg.push(
+      `<text class="zone-break-label other" x="${width - rightCol + 8}" y="${yArr + 4}">${zoneAbbr(plan, plan.arrive, plan.input.homeZone)}</text>`,
+    );
+  }
 
   const onMain = (t: number) => (t > plan.depart && t < plan.arrive ? mainX + m.kink : mainX);
   const selectedKey = opts.selected ? `${opts.selected.look}-${opts.selected.event.start}` : '';
@@ -381,7 +394,16 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         );
         lines.push(line('seg-meta', duration(e.end - e.start), metaH));
         if (active) lines.push(line('seg-until', FEED.until(clock(plan, e.end)), metaH));
-        blocks.push({ lane: 'main', top: y0 - m.font * 0.6, maxY, x: x + LABEL_GAP, item: i, lines });
+        // An item starting on a day boundary keeps its label below the date rule.
+        const onBoundary = marks.some((mk) => mk.dayStart && Math.abs(mk.t - e.start) < 15 * MINUTE);
+        blocks.push({
+          lane: 'main',
+          top: onBoundary ? y0 + 4 : y0 - m.font * 0.6,
+          maxY,
+          x: x + LABEL_GAP,
+          item: i,
+          lines,
+        });
         break;
       }
       case 'flight': {
@@ -397,9 +419,10 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
           item: i,
           lines: [line('seg-title', `${item.title} · ${duration(e.end - e.start)}`, titleH)],
         });
+        // The landing label sits under the break rule, not across it.
         blocks.push({
           lane: 'main',
-          top: yArr - m.font * 0.6,
+          top: yArr + 6,
           maxY: nextStart(mainStarts, plan.arrive),
           x: labelX,
           item: i,
@@ -491,7 +514,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
   });
 
   // Invisible anchors for scrolling to a day, and the now line.
-  for (const mk of hourMarks(plan)) {
+  for (const mk of marks) {
     if (!mk.dayStart) continue;
     const anchor = el('div', 'day-head');
     anchor.style.top = `${y(mk.t)}px`;

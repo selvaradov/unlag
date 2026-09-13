@@ -168,6 +168,15 @@ export const HEADER = {
   editTrip: 'Edit trip',
   doneEditing: 'Done',
   how: 'How this works',
+  howLede:
+    'Every instruction is placed around the nightly low point of your body clock, moved a little each day by timed light.',
+  howHref: 'how.html',
+  back: 'Back to the plan',
+};
+
+export const DAY_AXIS = {
+  caption: 'Local time, noon to noon',
+  ticks: ['12:00', '18:00', '00:00', '06:00', '12:00'],
 };
 
 export const SUMMARY = {

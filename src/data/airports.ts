@@ -12,6 +12,11 @@ type Row = [string, string, string, string, string, number];
 
 let cache: Airport[] | null = null;
 
+// The list once loaded, or null before then.
+export function airportsNow(): Airport[] | null {
+  return cache;
+}
+
 export async function loadAirports(): Promise<Airport[]> {
   if (cache) return cache;
   const rows = (await import('./airports.json')).default as Row[];
