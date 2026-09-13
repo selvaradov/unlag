@@ -564,24 +564,32 @@ dialog.sheet::backdrop {
 }
 
 .day-axis .ticks {
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 1em;
 }
 
+/* Each label is centred on its tick, at 0, 25, 50 and 75 percent of the strip. */
 .day-axis .ticks span {
-  width: 0;
-  display: flex;
-  justify-content: center;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
   white-space: nowrap;
 }
 
-/* The end labels hug the strip edges so nothing hangs outside the panel. */
-.day-axis .ticks span:first-child {
-  justify-content: flex-start;
+.day-axis .ticks span:nth-child(1) {
+  left: 0;
 }
 
-.day-axis .ticks span:last-child {
-  justify-content: flex-end;
+.day-axis .ticks span:nth-child(2) {
+  left: 25%;
+}
+
+.day-axis .ticks span:nth-child(3) {
+  left: 50%;
+}
+
+.day-axis .ticks span:nth-child(4) {
+  left: 75%;
 }
 
 .day-list .strip {

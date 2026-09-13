@@ -176,7 +176,8 @@ export const HEADER = {
 
 export const DAY_AXIS = {
   caption: 'Local time',
-  ticks: ['12:00', '18:00', '00:00', '06:00', '12:00'],
+  // Labels for the ticks at 0, 25, 50 and 75 percent of the strip; the closing noon is left unlabelled.
+  ticks: ['12:00', '18:00', '00:00', '06:00'],
 };
 
 export const SUMMARY = {
