@@ -15,6 +15,7 @@ import list from 'lucide-static/icons/list.svg?raw';
 import moon from 'lucide-static/icons/moon.svg?raw';
 import pencil from 'lucide-static/icons/pencil.svg?raw';
 import pill from 'lucide-static/icons/pill.svg?raw';
+import share from 'lucide-static/icons/share.svg?raw';
 import plane from 'lucide-static/icons/plane.svg?raw';
 import planeLanding from 'lucide-static/icons/plane-landing.svg?raw';
 import planeTakeoff from 'lucide-static/icons/plane-takeoff.svg?raw';
@@ -49,6 +50,7 @@ export const ICONS = {
   planeTakeoff: prepare(planeTakeoff),
   planeLanding: prepare(planeLanding),
   pill: prepare(pill),
+  share: prepare(share),
   lamp: prepare(lamp),
   clock: prepare(clock),
   calendar: prepare(calendar),

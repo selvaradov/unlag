@@ -261,7 +261,9 @@ export const NOTIFY = {
   justOn: 'Done. The first notification comes with the next instruction.',
   checking: 'Checking…',
   unsupported: 'This browser cannot show push notifications. The calendar file gives the same alerts.',
-  install: 'On iPhone and iPad, add Unlag to the home screen first, then turn notifications on from there.',
+  install: 'On iPhone and iPad, notifications only work once Unlag is on the home screen.',
+  addToHome: 'Add to home screen',
+  addToHomeSteps: 'In the share sheet, scroll to Add to Home Screen. Then open Unlag from there and tap Notify me.',
   errors: {
     denied: 'Notifications are blocked for this site. Allow them in the browser settings and try again.',
     unavailable: 'Notifications are not set up on this site yet.',

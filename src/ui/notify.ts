@@ -73,13 +73,31 @@ export function renderNotify(search: string): HTMLElement {
   };
 
   if (!supported()) {
+    wrap.classList.add('impossible');
     button.disabled = true;
     show(false, NOTIFY.unsupported);
     return wrap;
   }
   if (needsInstall()) {
+    // No install prompt exists on iOS; the share sheet is where Add to Home Screen lives.
+    wrap.classList.add('impossible');
     button.disabled = true;
     show(false, NOTIFY.install);
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'icon-button';
+    add.innerHTML = `${ICONS.share}<span>${NOTIFY.addToHome}</span>`;
+    add.addEventListener('click', async () => {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'Unlag', url: location.href });
+        } catch {
+          // Cancelled; the written steps stay on screen.
+        }
+      }
+      status.textContent = NOTIFY.addToHomeSteps;
+    });
+    wrap.appendChild(add);
     return wrap;
   }
   let on = false;

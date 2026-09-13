@@ -1474,11 +1474,31 @@ dialog.sheet::backdrop {
 /* Notifications */
 
 .notify {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  align-items: center;
   margin: 4px 0 0;
 }
 
+.notify .icon-button:first-child {
+  grid-row: 1;
+}
+
 .notify-status {
-  margin: 6px 0 0;
+  margin: 0;
   font-size: 0.8rem;
+  line-height: 1.35;
   color: var(--muted);
+}
+
+.notify .icon-button + .icon-button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 6px;
+}
+
+.notify.impossible .icon-button[disabled] {
+  opacity: 0.45;
+  cursor: default;
 }

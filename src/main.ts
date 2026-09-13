@@ -130,37 +130,71 @@ function attachZoom(feed: HTMLElement): void {
   let startPx = 0;
   let anchorTime = 0;
   let anchorY = 0;
+  let fingers = '';
   let pending = false;
-  feed.addEventListener(
-    'touchstart',
-    (ev) => {
-      if (ev.touches.length !== 2) return;
-      const [a, b] = [ev.touches[0], ev.touches[1]];
-      startDist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      startPx = pxPerHour;
-      anchorY = (a.clientY + b.clientY) / 2;
-      anchorTime = timeAt(plan, anchorY + window.scrollY - feedTop(), pxPerHour);
-    },
-    { passive: true },
-  );
-  feed.addEventListener(
-    'touchmove',
-    (ev) => {
-      if (ev.touches.length !== 2 || startDist === 0) return;
+  const ids = (list: TouchList) => [...list].map((t) => t.identifier).join(',');
+  const begin = (a: { clientX: number; clientY: number }, b: { clientX: number; clientY: number }, dist: number) => {
+    startDist = dist;
+    startPx = pxPerHour;
+    anchorY = (a.clientY + b.clientY) / 2;
+    anchorTime = timeAt(plan, anchorY + window.scrollY - feedTop(), pxPerHour);
+  };
+  const apply = (ratio: number) => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      // A single step never changes the scale by more than a fifth, so a mis-read finger cannot fling it.
+      const target = Math.min(pxPerHour * 1.2, Math.max(pxPerHour / 1.2, startPx * ratio));
+      setScale(target, anchorTime, anchorY);
+    });
+  };
+  if ('GestureEvent' in window) {
+    // iOS reports pinches as gesture events with a running scale; stopping them also stops the page zooming.
+    feed.addEventListener('gesturestart', (ev) => {
       ev.preventDefault();
-      const [a, b] = [ev.touches[0], ev.touches[1]];
-      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      anchorY = (a.clientY + b.clientY) / 2;
-      if (pending) return;
-      pending = true;
-      requestAnimationFrame(() => {
-        pending = false;
-        setScale(startPx * (dist / startDist), anchorTime, anchorY);
-      });
-    },
-    { passive: false },
-  );
-  feed.addEventListener('touchend', () => (startDist = 0));
+      const g = ev as unknown as { clientX: number; clientY: number };
+      begin(g, g, 1);
+    });
+    feed.addEventListener('gesturechange', (ev) => {
+      ev.preventDefault();
+      apply((ev as unknown as { scale: number }).scale);
+    });
+    feed.addEventListener('gestureend', (ev) => ev.preventDefault());
+  } else {
+    feed.addEventListener(
+      'touchstart',
+      (ev) => {
+        if (ev.touches.length !== 2) return;
+        const [a, b] = [ev.touches[0], ev.touches[1]];
+        fingers = ids(ev.touches);
+        begin(a, b, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY));
+      },
+      { passive: true },
+    );
+    feed.addEventListener(
+      'touchmove',
+      (ev) => {
+        if (ev.touches.length !== 2 || startDist === 0) return;
+        // A changed pair of fingers starts a fresh pinch rather than continuing the old one.
+        if (ids(ev.touches) !== fingers) {
+          const [a, b] = [ev.touches[0], ev.touches[1]];
+          fingers = ids(ev.touches);
+          begin(a, b, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY));
+          return;
+        }
+        ev.preventDefault();
+        const [a, b] = [ev.touches[0], ev.touches[1]];
+        anchorY = (a.clientY + b.clientY) / 2;
+        apply(Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) / startDist);
+      },
+      { passive: false },
+    );
+    feed.addEventListener('touchend', () => {
+      startDist = 0;
+      fingers = '';
+    });
+  }
   feed.addEventListener(
     'wheel',
     (ev) => {
