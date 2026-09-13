@@ -22,6 +22,8 @@ function cleanUrls(): Plugin {
 
 export default defineConfig({
   build: { rollupOptions: { input: { index: 'index.html', how: 'how.html' } } },
+  // Stamped into the footer so a device's build can be told apart from the latest.
+  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC') },
   plugins: [
     cleanUrls(),
     VitePWA({
@@ -29,6 +31,8 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'autoUpdate',
+      // Registration happens in main.ts so the page reloads when a new worker takes over.
+      injectRegister: null,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Unlag',

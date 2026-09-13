@@ -1,6 +1,7 @@
 import './fonts.css';
 import './style.css';
 import { DateTime, Settings } from 'luxon';
+import { registerSW } from 'virtual:pwa-register';
 import { generatePlan } from './algorithm/generate.ts';
 import type { Plan, PlanInput } from './algorithm/types.ts';
 import { HOUR } from './algorithm/time.ts';
@@ -26,6 +27,14 @@ import { loadAirports } from './data/airports.ts';
 import { renderTripCard } from './ui/tripCard.ts';
 
 Settings.defaultLocale = 'en-GB';
+
+// The service worker updates itself; when a new one takes over, the page reloads so nobody is left
+// on a stale build. Returning to the tab or app also checks for a new worker.
+const updateSW = registerSW({ immediate: true });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') void updateSW();
+});
+
 const SCALE_KEY = 'unlag-px-per-hour';
 const MEDIUM = window.matchMedia('(min-width: 900px)');
 const WIDE = window.matchMedia('(min-width: 1200px)');
