@@ -1,9 +1,10 @@
 // Prints the generated plan for the default inputs as a table, in the zone in effect at each event.
-import { DateTime } from 'luxon';
+import { DateTime, Settings } from 'luxon';
 import { DEFAULT_INPUT } from '../src/config.ts';
 import { generatePlan } from '../src/algorithm/generate.ts';
 import type { PlanInput } from '../src/algorithm/types.ts';
 
+Settings.defaultLocale = 'en-GB';
 const input: PlanInput = JSON.parse(JSON.stringify(DEFAULT_INPUT));
 const plan = generatePlan(input);
 if (process.argv.includes('--json')) {

@@ -1,4 +1,5 @@
 import './style.css';
+import { Settings } from 'luxon';
 import { generatePlan } from './algorithm/generate.ts';
 import type { PlanInput } from './algorithm/types.ts';
 import { APP_NAME, COPY_LINK, DOWNLOAD_ICS, FOOTER, LINK_COPIED, TAGLINE, adaptedLine, summary } from './copy.ts';
@@ -10,6 +11,7 @@ import { readInput, writeInput } from './ui/state.ts';
 import { renderTextList } from './ui/textList.ts';
 import { renderTimeline } from './ui/timeline.ts';
 
+Settings.defaultLocale = 'en-GB';
 const app = document.getElementById('app')!;
 let input: PlanInput = readInput(location.search);
 

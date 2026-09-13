@@ -31,8 +31,12 @@ export function renderNowNext(plan: Plan, now: number): HTMLElement {
     nowEl.innerHTML = `<span class="label">${NOW_LABEL}</span><strong>${PLAN_NOT_STARTED}</strong>`;
   } else if (now > plan.planEnd) {
     nowEl.innerHTML = `<span class="label">${NOW_LABEL}</span><strong>${PLAN_OVER}</strong>`;
-  } else if (active.length === 0) {
-    nowEl.innerHTML = `<span class="label">${NOW_LABEL}</span><strong>${NOTHING_NOW}</strong>`;
+  } else if (active.length === 0 || active[0].kind === 'caffeine') {
+    nowEl.innerHTML =
+      `<span class="label">${NOW_LABEL}</span><strong>${NOTHING_NOW}</strong>` +
+      active
+        .map((e) => `<p class="also">${eventTitle(e)} until ${clock(plan, e.end)} ${zoneAbbr(plan, e.end)}</p>`)
+        .join('');
   } else {
     const main = active[0];
     const rest = active.slice(1);

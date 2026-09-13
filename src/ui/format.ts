@@ -17,8 +17,14 @@ export function clock(plan: Plan, t: number, zone?: string): string {
   return dt(plan, t, zone).toFormat('HH:mm');
 }
 
+// Prefer a named abbreviation such as BST or PDT over a numeric offset; locales differ on which zones get names.
 export function zoneAbbr(plan: Plan, t: number, zone?: string): string {
-  return dt(plan, t, zone).toFormat('ZZZZ');
+  const d = dt(plan, t, zone);
+  for (const locale of ['en-GB', 'en-US']) {
+    const name = d.setLocale(locale).toFormat('ZZZZ');
+    if (!/^GMT[+-]/.test(name)) return name;
+  }
+  return d.toFormat('ZZZZ');
 }
 
 export function dayLabel(plan: Plan, t: number, zone?: string): string {

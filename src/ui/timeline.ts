@@ -6,10 +6,10 @@ import { HOUR, type Interval, intersect } from '../algorithm/time.ts';
 import { LEGEND, TMIN_LEGEND, eventTitle } from '../copy.ts';
 import { clock, dayLabel, instruction, isPoint, zoneAbbr, zoneAt } from './format.ts';
 
-const PX_PER_HOUR = 22;
+const PX_PER_HOUR = 24;
 const LEFT = 8;
 const RIGHT = 8;
-const ROW_HEIGHT = 74;
+const ROW_HEIGHT = 84;
 const LANE = {
   sleep: { y: 18, h: 22 },
   light: { y: 42, h: 12 },
@@ -136,13 +136,8 @@ export function renderTimeline(plan: Plan, now: number): HTMLElement {
     root.appendChild(head);
 
     const width = x(row, row.end) + RIGHT;
-    const svg = svgEl('svg', {
-      viewBox: `0 0 ${width} ${ROW_HEIGHT}`,
-      width,
-      height: ROW_HEIGHT,
-      class: 'row',
-      role: 'img',
-    });
+    const svg = svgEl('svg', { viewBox: `0 0 ${width} ${ROW_HEIGHT}`, class: 'row', role: 'img' });
+    svg.style.width = `${(100 * (row.end - row.start)) / (24 * HOUR)}%`;
     svg.appendChild(svgEl('line', { x1: LEFT, x2: width - RIGHT, y1: LANE.axis, y2: LANE.axis, class: 'axis' }));
     for (const tick of tickInstants(plan, row)) {
       const tx = x(row, tick.t);

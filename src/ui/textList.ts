@@ -17,6 +17,7 @@ export function renderTextList(plan: Plan, now: number): HTMLElement {
   const caffeine = plan.events.filter((e) => e.kind === 'caffeine');
   for (const [, events] of [...groups.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const first = events[0];
+    const groupZone = zoneAt(plan, first.start);
     const h = document.createElement('h3');
     h.textContent = `${dayLabel(plan, first.start)}, ${zoneAbbr(plan, first.start)}`;
     root.appendChild(h);
@@ -25,9 +26,11 @@ export function renderTextList(plan: Plan, now: number): HTMLElement {
       const li = document.createElement('li');
       if (e.end <= now) li.classList.add('past');
       if (e.optional) li.classList.add('optional');
+      const startLabel = zoneAt(plan, e.start) === groupZone ? '' : ` ${zoneAbbr(plan, e.start)}`;
+      const endLabel = zoneAt(plan, e.end) === zoneAt(plan, e.start) ? startLabel : ` ${zoneAbbr(plan, e.end)}`;
       const when = isPoint(e)
-        ? clock(plan, e.start)
-        : `${clock(plan, e.start)} to ${clock(plan, e.end)}${zoneAt(plan, e.start) !== zoneAt(plan, e.end) ? ` ${zoneAbbr(plan, e.end)}` : ''}`;
+        ? `${clock(plan, e.start)}${startLabel}`
+        : `${clock(plan, e.start)}${startLabel === endLabel ? '' : startLabel} to ${clock(plan, e.end)}${endLabel}`;
       li.innerHTML = `<span class="when">${when}</span> <strong>${eventTitle(e)}</strong><span class="detail">${instruction(plan, e)}</span>`;
       ul.appendChild(li);
     }

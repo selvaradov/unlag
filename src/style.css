@@ -162,6 +162,8 @@ footer {
 
 .row {
   display: block;
+  min-width: 320px;
+  height: auto;
 }
 
 .axis {
@@ -170,7 +172,7 @@ footer {
 }
 
 .tick {
-  font-size: 9px;
+  font-size: 10px;
   fill: var(--muted);
   text-anchor: middle;
 }
@@ -290,7 +292,7 @@ footer {
 
 .text-list li {
   display: grid;
-  grid-template-columns: 7.5em 1fr;
+  grid-template-columns: 9.5em 1fr;
   gap: 0 8px;
   padding: 5px 0;
   border-bottom: 1px solid var(--rule);
