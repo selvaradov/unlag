@@ -28,7 +28,7 @@ curves.
   delaying clock.
 
 All constants are in `src/config.ts` and all text in `src/copy.ts`, including
-the "How this works" section shown in the app. Icons are from Lucide (ISC).
+the method explanation served at `/how`. Icons are from Lucide (ISC).
 
 ## Checking against a circadian model
 
