@@ -5,17 +5,17 @@
   --muted: #7c7f86;
   --rule: #e4e4e0;
   --panel: #ffffff;
-  --light: #e0a100;
-  --light-ink: #3a2a00;
-  --sleep: #23324f;
-  --sleep-ink: #eef1f8;
-  --nap: #6b7a99;
-  --avoid: #b07a12;
-  --caffeine: #8a7f72;
-  --caffeine-ink: #f7f3ee;
-  --melatonin: #6e5bb5;
+  --light: #ee8d1c;
+  --light-ink: #3a2000;
+  --sleep: #1f4a55;
+  --sleep-ink: #e4f1f3;
+  --nap: #6a97a3;
+  --avoid: #d07a12;
+  --caffeine: #7a4b2a;
+  --caffeine-ink: #f7efe8;
+  --melatonin: #8a3f74;
   --flight: #6d7078;
-  --now: #c9402d;
+  --now: #d94f3d;
   --station-ink: currentColor;
   --dot-ink: currentColor;
   --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -29,17 +29,17 @@
     --muted: #8d8f96;
     --rule: #2a2c33;
     --panel: #1c1e25;
-    --light: #e3ad1f;
-    --light-ink: #2a1e00;
-    --sleep: #8ea0c9;
-    --sleep-ink: #0f1526;
-    --nap: #4f5c78;
-    --avoid: #c8933a;
-    --caffeine: #a89a8a;
-    --caffeine-ink: #1c150e;
-    --melatonin: #a292d8;
+    --light: #f2a23c;
+    --light-ink: #2a1600;
+    --sleep: #7fb3bf;
+    --sleep-ink: #0b1f24;
+    --nap: #3f6b75;
+    --avoid: #e09a3e;
+    --caffeine: #b58b6c;
+    --caffeine-ink: #1c120a;
+    --melatonin: #c98ab8;
     --flight: #9a9ca4;
-    --now: #ef6b57;
+    --now: #f06b5a;
   }
 }
 
@@ -96,6 +96,11 @@ h3 {
   padding-bottom: 40vh;
 }
 
+.mobile .feed-host {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
 .sticky {
   position: sticky;
   top: 0;
@@ -130,17 +135,6 @@ h3 {
   color: var(--muted);
 }
 
-.trip-button {
-  justify-self: end;
-  background: none;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-  padding: 3px 12px;
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
 .headline {
   padding: 10px 20px 14px;
 }
@@ -172,51 +166,6 @@ h3 {
 .opt {
   color: var(--muted);
   font-weight: 400;
-}
-
-/* Desktop: a fixed panel on the left, the feed on the right. */
-
-.layout {
-  display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
-  gap: 0 32px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px 30vh;
-}
-
-.panel {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  height: 100vh;
-  overflow-y: auto;
-  padding: 24px 4px 24px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.panel .headline {
-  padding: 16px 0 6px;
-}
-
-.panel .headline h2 {
-  font-size: 1.6rem;
-}
-
-.panel h3 {
-  margin: 20px 0 4px;
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-weight: 500;
-}
-
-.desktop .feed-host {
-  padding-top: 24px;
 }
 
 /* Feed */
@@ -419,7 +368,6 @@ h3 {
 .now-line {
   position: absolute;
   left: 56px;
-  right: 10px;
   border-top: 1.5px dashed var(--now);
   z-index: 3;
   pointer-events: none;
@@ -437,46 +385,6 @@ h3 {
   color: var(--now);
   background: var(--bg);
   padding: 0 2px;
-}
-
-/* Zoom and now controls */
-
-.zoom {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.mobile .zoom {
-  position: fixed;
-  right: 14px;
-  bottom: 18px;
-  z-index: 4;
-  flex-direction: column;
-}
-
-.zoom button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid var(--rule);
-  background: var(--panel);
-  cursor: pointer;
-  font-size: 1.1rem;
-  line-height: 1;
-}
-
-.zoom .now-button {
-  width: auto;
-  min-width: 48px;
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--bg);
-  border-color: var(--ink);
-  font-size: 0.85rem;
-  font-weight: 500;
 }
 
 /* Sheets, mobile only */
@@ -515,76 +423,6 @@ dialog.sheet::backdrop {
   padding: 6px;
 }
 
-/* Trip panel */
-
-.summary,
-.footer {
-  color: var(--muted);
-  font-size: 0.88rem;
-  margin: 8px 0;
-}
-
-.footer {
-  font-size: 0.76rem;
-  border-top: 1px solid var(--rule);
-  padding-top: 10px;
-}
-
-.trip-form .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px 14px;
-  margin: 12px 0;
-}
-
-.trip-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.trip-form input,
-.trip-form select {
-  font: inherit;
-  font-size: 0.9rem;
-  color: var(--ink);
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 5px 8px;
-  min-width: 0;
-}
-
-.trip-form .checks {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-
-.trip-form .checks label {
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin: 14px 0;
-}
-
-.actions button {
-  padding: 7px 12px;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  background: var(--panel);
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
 /* Day list */
 
 .day-list {
@@ -615,17 +453,346 @@ dialog.sheet::backdrop {
 }
 
 .day-list .sleep-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--mono);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--sleep-ink);
   background: var(--sleep);
   border-radius: 999px;
-  padding: 4px 12px;
+  padding: 4px 12px 4px 9px;
   justify-self: start;
 }
 
+.day-list .sleep-pill .icon {
+  width: 14px;
+  height: 14px;
+}
+
 .day-list .travel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--mono);
   font-size: 0.7rem;
   color: var(--muted);
+}
+
+.day-list .travel .icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* Desktop layouts. Two columns with tabs from 900 px, three from 1200 px. */
+
+.layout {
+  display: grid;
+  gap: 0 32px;
+  margin: 0 auto;
+  padding: 0 24px 30vh;
+}
+
+.layout.two {
+  grid-template-columns: 340px minmax(0, 720px);
+  max-width: 1140px;
+}
+
+.layout.three {
+  grid-template-columns: 300px minmax(0, 640px) 320px;
+  justify-content: center;
+}
+
+.panel {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 24px 4px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel .headline {
+  padding: 14px 0 6px;
+}
+
+.panel .headline h2 {
+  font-size: 1.5rem;
+}
+
+.panel h3,
+.trip-card h3 {
+  margin: 18px 0 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+.feed-column {
+  padding-top: 18px;
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0 10px;
+  background: var(--bg);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--rule);
+  margin-top: 10px;
+}
+
+.tabs button {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 8px 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tabs button[aria-selected='true'] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+/* Controls */
+
+.zoom-group {
+  display: inline-flex;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.zoom-group button {
+  width: 40px;
+  height: 36px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+
+.zoom-group button + button {
+  border-left: 1px solid var(--rule);
+}
+
+.zoom-group button:hover {
+  color: var(--ink);
+}
+
+.zoom-group .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.now-button {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.float-controls {
+  position: fixed;
+  right: 14px;
+  bottom: 18px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.float-controls .zoom-group {
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+}
+
+.float-controls .zoom-group button + button {
+  border-left: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.float-controls .now-button {
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+}
+
+.trip-button {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 3px 12px 3px 9px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.trip-button .icon {
+  width: 15px;
+  height: 15px;
+}
+
+/* Trip card */
+
+.trip-card h2 {
+  margin: 12px 0 8px;
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+.mobile .trip-card h2 {
+  margin-top: 4px;
+}
+
+.facts {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.facts li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.9rem;
+}
+
+.facts .icon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px 7px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--panel);
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.icon-button .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.icon-button.done .icon {
+  color: var(--sleep);
+}
+
+.icon-button[aria-expanded='true'] {
+  border-color: var(--ink);
+}
+
+.footer {
+  color: var(--muted);
+  font-size: 0.76rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+  margin: 14px 0 0;
+}
+
+/* Form */
+
+.trip-form {
+  margin: 4px 0 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+
+.trip-form .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px 12px;
+  margin: 10px 0;
+}
+
+.trip-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.field-label .icon,
+.checks .icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.trip-form input,
+.trip-form select {
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 8px;
+  min-width: 0;
+}
+
+.trip-form .checks {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.trip-form .checks label {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
 }

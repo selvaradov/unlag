@@ -67,15 +67,6 @@ export function eventInstruction(e: PlanEvent, ctx: EventContext): string {
   }
 }
 
-export function summary(fromZone: string, toZone: string, direction: Direction, hours: number): string {
-  const verb = direction === 'delay' ? 'later' : 'earlier';
-  return `${fromZone.replace(/_/g, ' ')} to ${toZone.replace(/_/g, ' ')}. Your clock needs to move ${hours} h ${verb}.`;
-}
-
-export function adaptedLine(date: string | null): string {
-  return date ? `Predicted adapted by ${date}.` : 'Not fully adapted within the days shown.';
-}
-
 export const FORM = {
   homeZone: 'Home time zone',
   destZone: 'Destination time zone',
@@ -92,9 +83,9 @@ export const FORM = {
   lightBox: 'Light box available',
 };
 
-export const DOWNLOAD_ICS = 'Download calendar (.ics)';
-export const COPY_LINK = 'Copy link to this plan';
-export const LINK_COPIED = 'Link copied';
+export const DOWNLOAD_ICS = 'Calendar file';
+export const COPY_LINK = 'Copy link';
+export const LINK_COPIED = 'Copied';
 
 export const FOOTER =
   'Rules from Burgess, Using bright light and melatonin to reduce jet lag, and the light and melatonin phase response curves. Not medical advice.';
@@ -145,10 +136,31 @@ export const DAYLIST = {
 
 export const HEADER = {
   trip: 'Trip',
+  plan: 'Plan',
   close: 'Close',
   jumpToNow: 'Now',
   pickDay: 'Choose a day',
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
   days: 'Days',
+  editTrip: 'Edit trip',
+  doneEditing: 'Done',
 };
+
+export const SUMMARY = {
+  route: (from: string, to: string) => `${from} to ${to}`,
+  flight: (day: string, dep: string, arr: string, length: string) => `${day} · ${dep} to ${arr} · ${length}`,
+  shift: (hours: number, direction: Direction) =>
+    direction === 'delay'
+      ? `${hours} h behind. Your clock moves later, which is the easy way.`
+      : `${hours} h ahead. Your clock moves earlier, which takes longer.`,
+  sleep: (bed: string, wake: string) => `Usual sleep ${bed} to ${wake}`,
+  adapted: (day: string) => `Adapted by ${day}`,
+  notAdapted: 'Not fully adapted in the days shown',
+};
+
+// A readable place name from an IANA zone such as America/Los_Angeles.
+export function zoneCity(zone: string): string {
+  const last = zone.split('/').pop() ?? zone;
+  return last.replace(/_/g, ' ');
+}

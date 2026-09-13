@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import type { Plan } from '../algorithm/types.ts';
 import { DAYLIST } from '../copy.ts';
 import { clock, zoneAbbr, zoneAt } from './format.ts';
+import { ICONS } from './icons.ts';
 
 export interface DayRow {
   iso: string;
@@ -48,7 +49,7 @@ export function renderDayList(plan: Plan, now: number, onPick: (iso: string) => 
   for (const row of dayRows(plan, now)) {
     const li = document.createElement('li');
     if (row.today) li.classList.add('today');
-    li.innerHTML = `<span class="date">${row.label}<small>${row.zone}</small></span><span class="sleep-pill">${row.sleep}</span>${row.travel ? `<span class="travel">${DAYLIST.travel}</span>` : ''}`;
+    li.innerHTML = `<span class="date">${row.label}<small>${row.zone}</small></span><span class="sleep-pill">${ICONS.bed}${row.sleep}</span>${row.travel ? `<span class="travel" title="${DAYLIST.travel}">${ICONS.plane}</span>` : ''}`;
     li.addEventListener('click', () => onPick(row.iso));
     root.appendChild(li);
   }

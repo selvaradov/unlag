@@ -14,16 +14,17 @@ export const MAX_PX_PER_HOUR = 150;
 
 const LEFT_COL = 56;
 const RIGHT_COL = 56;
-// Below this width the other zone's hour column is dropped to make room for labels.
-const NARROW = 480;
 const MAIN_OFFSET = 40;
 const KINK = 18;
 const LABEL_GAP = 24;
-const SIDE_LINE_OFFSET = 132;
-const STATION_R = 11;
-const DOT_R = 9;
-const MAIN_W = 14;
-const THIN_W = 2.5;
+// Below this width the other zone's hour column is dropped to make room for labels.
+const NARROW = 480;
+// From this width the lines and stations grow and the side line moves further out.
+const WIDE_FEED = 600;
+const METRICS = {
+  compact: { side: 132, station: 11, dot: 9, main: 14, thin: 2.5, icon: 14 },
+  wide: { side: 190, station: 13, dot: 10, main: 20, thin: 4, icon: 16 },
+};
 
 export interface FeedItem {
   event: PlanEvent;
@@ -158,8 +159,9 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
   const height = y(plan.planEnd) + px;
   const mainX = LEFT_COL + MAIN_OFFSET;
   const narrow = width < NARROW;
+  const m = width >= WIDE_FEED ? METRICS.wide : METRICS.compact;
   const rightCol = narrow ? 10 : RIGHT_COL;
-  const sideX = Math.min(width - rightCol - 120, mainX + SIDE_LINE_OFFSET);
+  const sideX = Math.min(width - rightCol - 120, mainX + m.side);
   const labelX = mainX + LABEL_GAP;
   const items = feedItems(plan);
   const step = labelStep(px);
@@ -220,13 +222,13 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         const x = onMain(e.start + MINUTE);
         const y0 = y(e.start);
         const y1 = y(e.end);
-        const w = item.look === 'nap' ? MAIN_W - 4 : MAIN_W;
+        const w = item.look === 'nap' ? m.main - 4 : m.main;
         const inset = w / 2;
         let body = `<line class="seg" x1="${x}" x2="${x}" y1="${y0 + inset}" y2="${Math.max(y0 + inset, y1 - inset)}" stroke-width="${w}"/>`;
         if (item.look === 'dark')
           body += `<line class="seg-core" x1="${x}" x2="${x}" y1="${y0 + inset}" y2="${Math.max(y0 + inset, y1 - inset)}" stroke-width="${w - 5}"/>`;
-        body += `<circle class="station" cx="${x}" cy="${y0}" r="${STATION_R}"/>`;
-        body += icon(item.icon, x, y0, 14, 'var(--station-ink)');
+        body += `<circle class="station" cx="${x}" cy="${y0}" r="${m.station}"/>`;
+        body += icon(item.icon, x, y0, m.icon, 'var(--station-ink)');
         const tall = y1 - y0;
         const lx = x + LABEL_GAP;
         body += `<text class="seg-title" x="${lx}" y="${y0 + 4}">${esc(item.title)}${e.optional ? `<tspan class="opt"> ${FEED.optional}</tspan>` : ''}</text>`;
@@ -237,8 +239,8 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         break;
       }
       case 'flight': {
-        let body = `<circle class="station" cx="${mainX}" cy="${yDep}" r="${STATION_R}"/>${icon('plane', mainX, yDep, 14, 'var(--station-ink)')}`;
-        body += `<circle class="station" cx="${mainX}" cy="${yArr}" r="${STATION_R}"/>${icon('landing', mainX, yArr, 14, 'var(--station-ink)')}`;
+        let body = `<circle class="station" cx="${mainX}" cy="${yDep}" r="${m.station}"/>${icon('plane', mainX, yDep, m.icon, 'var(--station-ink)')}`;
+        body += `<circle class="station" cx="${mainX}" cy="${yArr}" r="${m.station}"/>${icon('landing', mainX, yArr, m.icon, 'var(--station-ink)')}`;
         body += `<text class="seg-title" x="${labelX}" y="${yDep - 8}">${esc(item.title)} <tspan class="seg-meta">${duration(e.end - e.start)}</tspan></text>`;
         body += `<text class="seg-title landing" x="${labelX}" y="${yArr + 4}">${esc(FEED.landed(clock(plan, plan.arrive)))}</text>`;
         body += `<text class="seg-meta" x="${labelX}" y="${yArr + 20}">${esc(FEED.clocksChange(plan.totalShiftHours, plan.direction))}</text>`;
@@ -250,7 +252,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         const y0 = y(e.start);
         const y1 = y(e.end);
         const dashed = item.look === 'noCaffeine' ? ' dashed' : '';
-        let body = `<line class="side${dashed}" x1="${sideX}" x2="${sideX}" y1="${y0}" y2="${y1}" stroke-width="${THIN_W}"/>`;
+        let body = `<line class="side${dashed}" x1="${sideX}" x2="${sideX}" y1="${y0}" y2="${y1}" stroke-width="${m.thin}"/>`;
         const doseAt = items.some((o) => o.look === 'caffeineDose' && Math.abs(o.event.start - e.start) < 15 * MINUTE);
         const doseBefore = items.some(
           (o) =>
@@ -271,7 +273,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
       case 'caffeineDose':
       case 'melatonin': {
         const y0 = y(e.start);
-        let body = `<circle class="dot" cx="${sideX}" cy="${y0}" r="${DOT_R}"/>${icon(item.icon, sideX, y0, 11, 'var(--dot-ink)')}`;
+        let body = `<circle class="dot" cx="${sideX}" cy="${y0}" r="${m.dot}"/>${icon(item.icon, sideX, y0, m.icon - 3, 'var(--dot-ink)')}`;
         body += `<text class="side-title" x="${sideX + 14}" y="${y0 + 4}">${esc(item.look === 'melatonin' ? 'melatonin' : 'caffeine')}</text>`;
         body += `<text class="side-meta" x="${sideX + 14}" y="${y0 + 18}">${esc(e.note ?? '')}${e.optional ? ` ${FEED.optional}` : ''}</text>`;
         g(body, `look-${item.look}`);
@@ -322,6 +324,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
   if (now >= axisStart(plan) && now <= plan.planEnd) {
     const line = el('div', 'now-line', `<span>${clock(plan, now)}</span>`);
     line.style.top = `${y(now)}px`;
+    line.style.right = `${rightCol}px`;
     line.id = 'now';
     root.appendChild(line);
   }

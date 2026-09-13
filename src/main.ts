@@ -4,7 +4,7 @@ import { DateTime, Settings } from 'luxon';
 import { generatePlan } from './algorithm/generate.ts';
 import type { Plan, PlanInput } from './algorithm/types.ts';
 import { HOUR } from './algorithm/time.ts';
-import { APP_NAME, COPY_LINK, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, adaptedLine, summary } from './copy.ts';
+import { APP_NAME, HEADER } from './copy.ts';
 import { renderDayList } from './ui/dayList.ts';
 import {
   DEFAULT_PX_PER_HOUR,
@@ -16,21 +16,23 @@ import {
   yOf,
   type FeedItem,
 } from './ui/feed.ts';
-import { renderForm } from './ui/form.ts';
 import { dayLabel, zoneAt } from './ui/format.ts';
 import { renderHeadline } from './ui/headline.ts';
 import { ICONS } from './ui/icons.ts';
-import { toICS } from './ui/ics.ts';
 import { readInput, writeInput } from './ui/state.ts';
+import { renderTripCard } from './ui/tripCard.ts';
 
 Settings.defaultLocale = 'en-GB';
 const SCALE_KEY = 'unlag-px-per-hour';
-const DESKTOP = window.matchMedia('(min-width: 900px)');
+const MEDIUM = window.matchMedia('(min-width: 900px)');
+const WIDE = window.matchMedia('(min-width: 1200px)');
 
 const app = document.getElementById('app')!;
 let input: PlanInput = readInput(location.search);
 let plan: Plan = generatePlan(input);
 let selected: FeedItem | null = null;
+let editing = false;
+let tab: 'plan' | 'trip' = 'plan';
 let pxPerHour = readScale();
 
 function readScale(): number {
@@ -51,16 +53,6 @@ function saveScale(): void {
   }
 }
 
-function download(name: string, content: string, type: string): void {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 // Scrolling. The feed lives in the page; the sticky parts sit above or beside it.
 
 function feedEl(): HTMLElement | null {
@@ -68,7 +60,7 @@ function feedEl(): HTMLElement | null {
 }
 
 function stickyHeight(): number {
-  return DESKTOP.matches ? 0 : (document.querySelector<HTMLElement>('.sticky')?.offsetHeight ?? 0);
+  return MEDIUM.matches ? 0 : (document.querySelector<HTMLElement>('.sticky')?.offsetHeight ?? 0);
 }
 
 function feedTop(): number {
@@ -116,8 +108,7 @@ function setScale(next: number, anchorTime: number, anchorClientY: number): void
 }
 
 function zoomBy(factor: number): void {
-  const anchorY = focusLine();
-  setScale(pxPerHour * factor, timeAtFocus(), anchorY);
+  setScale(pxPerHour * factor, timeAtFocus(), focusLine());
 }
 
 function attachZoom(feed: HTMLElement): void {
@@ -190,69 +181,64 @@ function replaceFeed(): void {
   if (old) old.replaceWith(buildFeed());
 }
 
-// Panels shared by both layouts.
+// Pieces shared by the layouts.
 
-function tripPanel(): HTMLElement {
-  const panel = document.createElement('div');
-  panel.className = 'trip-panel';
-  const sum = document.createElement('p');
-  sum.className = 'summary';
-  sum.textContent = `${summary(input.homeZone, input.destZone, plan.direction, plan.totalShiftHours)} ${adaptedLine(plan.adaptedAt ? dayLabel(plan, plan.adaptedAt) : null)}`;
-  panel.appendChild(sum);
-  panel.appendChild(
-    renderForm(input, (next) => {
+function tripCard(): HTMLElement {
+  return renderTripCard(plan, input, {
+    editing,
+    onEditToggle: (next) => {
+      editing = next;
+      rerenderKeepingSheet('trip-sheet');
+    },
+    onChange: (next) => {
       input = next;
       plan = generatePlan(input);
       history.replaceState(null, '', writeInput(input));
       selected = null;
-      const open = document.querySelector<HTMLDialogElement>('dialog[open]')?.className;
-      render();
-      if (open) document.querySelector<HTMLDialogElement>(`dialog.${open.split(' ').join('.')}`)?.showModal();
-    }),
-  );
-  const actions = document.createElement('div');
-  actions.className = 'actions';
-  const ics = document.createElement('button');
-  ics.type = 'button';
-  ics.textContent = DOWNLOAD_ICS;
-  ics.addEventListener('click', () => download('unlag.ics', toICS(plan), 'text/calendar'));
-  const link = document.createElement('button');
-  link.type = 'button';
-  link.textContent = COPY_LINK;
-  link.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(location.origin + location.pathname + writeInput(input));
-    link.textContent = LINK_COPIED;
-    setTimeout(() => (link.textContent = COPY_LINK), 1500);
+      rerenderKeepingSheet('trip-sheet');
+    },
   });
-  actions.append(ics, link);
-  panel.appendChild(actions);
-  const foot = document.createElement('p');
-  foot.className = 'footer';
-  foot.textContent = FOOTER;
-  panel.appendChild(foot);
-  return panel;
 }
 
-function zoomButtons(): HTMLElement {
-  const wrap = document.createElement('div');
-  wrap.className = 'zoom';
-  const out = document.createElement('button');
-  out.type = 'button';
-  out.textContent = '−';
-  out.title = HEADER.zoomOut;
-  out.addEventListener('click', () => zoomBy(1 / 1.3));
-  const inn = document.createElement('button');
-  inn.type = 'button';
-  inn.textContent = '+';
-  inn.title = HEADER.zoomIn;
-  inn.addEventListener('click', () => zoomBy(1.3));
+function rerenderKeepingSheet(cls: string): void {
+  const wasOpen = document.querySelector<HTMLDialogElement>(`dialog.${cls}[open]`) !== null;
+  render();
+  if (wasOpen) document.querySelector<HTMLDialogElement>(`dialog.${cls}`)?.showModal();
+}
+
+function nowButton(): HTMLButtonElement {
   const now = document.createElement('button');
   now.type = 'button';
   now.className = 'now-button';
   now.textContent = HEADER.jumpToNow;
   now.addEventListener('click', () => scrollToNow());
-  wrap.append(out, inn, now);
+  return now;
+}
+
+function zoomGroup(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'zoom-group';
+  const out = document.createElement('button');
+  out.type = 'button';
+  out.innerHTML = ICONS.zoomOut;
+  out.title = HEADER.zoomOut;
+  out.setAttribute('aria-label', HEADER.zoomOut);
+  out.addEventListener('click', () => zoomBy(1 / 1.3));
+  const inn = document.createElement('button');
+  inn.type = 'button';
+  inn.innerHTML = ICONS.zoomIn;
+  inn.title = HEADER.zoomIn;
+  inn.setAttribute('aria-label', HEADER.zoomIn);
+  inn.addEventListener('click', () => zoomBy(1.3));
+  wrap.append(out, inn);
   return wrap;
+}
+
+function toolbar(): HTMLElement {
+  const bar = document.createElement('div');
+  bar.className = 'toolbar';
+  bar.append(nowButton(), zoomGroup());
+  return bar;
 }
 
 function sheet(title: string, body: HTMLElement, cls: string): HTMLDialogElement {
@@ -271,6 +257,44 @@ function sheet(title: string, body: HTMLElement, cls: string): HTMLDialogElement
   return dialog;
 }
 
+function brand(): HTMLElement {
+  const b = document.createElement('span');
+  b.className = 'brand';
+  b.textContent = APP_NAME;
+  return b;
+}
+
+function daysBlock(now: number): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'days-block';
+  const title = document.createElement('h3');
+  title.textContent = HEADER.days;
+  wrap.append(title, renderDayList(plan, now, scrollToDay));
+  return wrap;
+}
+
+function tabs(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'tabs';
+  wrap.setAttribute('role', 'tablist');
+  for (const [key, label] of [
+    ['plan', HEADER.plan],
+    ['trip', HEADER.trip],
+  ] as const) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(tab === key));
+    b.textContent = label;
+    b.addEventListener('click', () => {
+      tab = key;
+      render();
+    });
+    wrap.appendChild(b);
+  }
+  return wrap;
+}
+
 function currentDayLabel(): string {
   const t = timeAtFocus();
   return dayLabel(plan, t, zoneAt(plan, t));
@@ -280,34 +304,42 @@ function render(): void {
   const now = Date.now();
   const scrollY = window.scrollY;
   app.replaceChildren();
-  app.className = DESKTOP.matches ? 'desktop' : 'mobile';
 
-  const brand = document.createElement('span');
-  brand.className = 'brand';
-  brand.textContent = APP_NAME;
-
-  if (DESKTOP.matches) {
+  if (WIDE.matches) {
+    app.className = 'wide';
     const layout = document.createElement('div');
-    layout.className = 'layout';
+    layout.className = 'layout three';
+    const left = document.createElement('aside');
+    left.className = 'panel';
+    left.append(brand(), renderHeadline(plan, now, selected), daysBlock(now));
+    const main = document.createElement('main');
+    main.className = 'feed-column';
+    const host = document.createElement('div');
+    host.className = 'feed-host';
+    main.append(toolbar(), host);
+    const right = document.createElement('aside');
+    right.className = 'panel';
+    right.appendChild(tripCard());
+    layout.append(left, main, right);
+    app.appendChild(layout);
+    host.appendChild(buildFeed());
+  } else if (MEDIUM.matches) {
+    app.className = 'medium';
+    const layout = document.createElement('div');
+    layout.className = 'layout two';
     const aside = document.createElement('aside');
     aside.className = 'panel';
-    aside.appendChild(brand);
-    aside.appendChild(renderHeadline(plan, now, selected));
-    aside.appendChild(zoomButtons());
-    const daysTitle = document.createElement('h3');
-    daysTitle.textContent = HEADER.days;
-    aside.appendChild(daysTitle);
-    aside.appendChild(renderDayList(plan, now, scrollToDay));
-    const tripTitle = document.createElement('h3');
-    tripTitle.textContent = HEADER.trip;
-    aside.appendChild(tripTitle);
-    aside.appendChild(tripPanel());
+    aside.append(brand(), renderHeadline(plan, now, selected), tabs(), tab === 'plan' ? daysBlock(now) : tripCard());
     const main = document.createElement('main');
-    main.className = 'feed-host';
+    main.className = 'feed-column';
+    const host = document.createElement('div');
+    host.className = 'feed-host';
+    main.append(toolbar(), host);
     layout.append(aside, main);
     app.appendChild(layout);
-    main.appendChild(buildFeed());
+    host.appendChild(buildFeed());
   } else {
+    app.className = 'mobile';
     const header = document.createElement('header');
     header.className = 'top';
     const dayButton = document.createElement('button');
@@ -317,17 +349,20 @@ function render(): void {
     const tripButton = document.createElement('button');
     tripButton.type = 'button';
     tripButton.className = 'trip-button';
-    tripButton.textContent = HEADER.trip;
-    header.append(brand, dayButton, tripButton);
+    tripButton.innerHTML = `${ICONS.plane}<span>${HEADER.trip}</span>`;
+    header.append(brand(), dayButton, tripButton);
     const sticky = document.createElement('div');
     sticky.className = 'sticky';
     sticky.append(header, renderHeadline(plan, now, selected));
     app.appendChild(sticky);
-    const main = document.createElement('main');
-    main.className = 'feed-host';
-    app.appendChild(main);
-    main.appendChild(buildFeed());
-    app.appendChild(zoomButtons());
+    const host = document.createElement('main');
+    host.className = 'feed-host';
+    app.appendChild(host);
+    host.appendChild(buildFeed());
+    const controls = document.createElement('div');
+    controls.className = 'float-controls';
+    controls.append(zoomGroup(), nowButton());
+    app.appendChild(controls);
     const daySheet = sheet(
       HEADER.pickDay,
       renderDayList(plan, now, (iso) => {
@@ -336,7 +371,7 @@ function render(): void {
       }),
       'day-sheet',
     );
-    const tripSheet = sheet(HEADER.trip, tripPanel(), 'trip-sheet');
+    const tripSheet = sheet(HEADER.trip, tripCard(), 'trip-sheet');
     app.append(daySheet, tripSheet);
     dayButton.addEventListener('click', () => daySheet.showModal());
     tripButton.addEventListener('click', () => tripSheet.showModal());
@@ -351,7 +386,8 @@ function render(): void {
 render();
 scrollToNow(false);
 
-DESKTOP.addEventListener('change', render);
+MEDIUM.addEventListener('change', render);
+WIDE.addEventListener('change', render);
 let resizeTimer = 0;
 window.addEventListener('resize', () => {
   window.clearTimeout(resizeTimer);

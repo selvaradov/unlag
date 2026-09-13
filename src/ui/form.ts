@@ -1,5 +1,6 @@
 import type { CaffeineHabit, PlanInput } from '../algorithm/types.ts';
 import { FORM } from '../copy.ts';
+import { ICONS, type IconName } from './icons.ts';
 
 function zoneOptions(): string[] {
   try {
@@ -9,10 +10,11 @@ function zoneOptions(): string[] {
   }
 }
 
-function field(label: string, control: HTMLElement): HTMLLabelElement {
+function field(label: string, iconName: IconName, control: HTMLElement): HTMLLabelElement {
   const l = document.createElement('label');
   const span = document.createElement('span');
-  span.textContent = label;
+  span.className = 'field-label';
+  span.innerHTML = `${ICONS[iconName]}${label}`;
   l.append(span, control);
   return l;
 }
@@ -38,16 +40,17 @@ export function renderForm(input: PlanInput, onChange: (next: PlanInput) => void
   }
   form.appendChild(list);
 
-  const homeZone = text(input.homeZone, { list: 'zones', autocomplete: 'off' });
-  const destZone = text(input.destZone, { list: 'zones', autocomplete: 'off' });
-  const depart = text(input.flight.depart, { type: 'datetime-local' });
-  const arrive = text(input.flight.arrive, { type: 'datetime-local' });
-  const bed = text(input.habitualBed, { type: 'time' });
-  const wake = text(input.habitualWake, { type: 'time' });
-  const travelWake = text(input.travelDayWake ?? '', { type: 'time' });
-  const pre = text(String(input.preflightDays), { type: 'number', min: '0', max: '3' });
-  const post = text(String(input.postDays), { type: 'number', min: '1', max: '10' });
+  const homeZone = text(input.homeZone, { list: 'zones', autocomplete: 'off', id: 'f-home' });
+  const destZone = text(input.destZone, { list: 'zones', autocomplete: 'off', id: 'f-dest' });
+  const depart = text(input.flight.depart, { type: 'datetime-local', id: 'f-depart' });
+  const arrive = text(input.flight.arrive, { type: 'datetime-local', id: 'f-arrive' });
+  const bed = text(input.habitualBed, { type: 'time', id: 'f-bed' });
+  const wake = text(input.habitualWake, { type: 'time', id: 'f-wake' });
+  const travelWake = text(input.travelDayWake ?? '', { type: 'time', id: 'f-travel-wake' });
+  const pre = text(String(input.preflightDays), { type: 'number', min: '0', max: '3', id: 'f-pre' });
+  const post = text(String(input.postDays), { type: 'number', min: '1', max: '10', id: 'f-post' });
   const caffeine = document.createElement('select');
+  caffeine.id = 'f-caffeine';
   for (const [value, label] of Object.entries(FORM.caffeineOptions)) {
     const o = document.createElement('option');
     o.value = value;
@@ -55,31 +58,33 @@ export function renderForm(input: PlanInput, onChange: (next: PlanInput) => void
     o.selected = value === input.caffeine;
     caffeine.appendChild(o);
   }
-  const melatonin = text('', { type: 'checkbox' });
+  const melatonin = text('', { type: 'checkbox', id: 'f-melatonin' });
   melatonin.checked = input.melatonin;
-  const lightBox = text('', { type: 'checkbox' });
+  const lightBox = text('', { type: 'checkbox', id: 'f-lightbox' });
   lightBox.checked = input.lightBox;
 
   const grid = document.createElement('div');
   grid.className = 'grid';
   grid.append(
-    field(FORM.homeZone, homeZone),
-    field(FORM.destZone, destZone),
-    field(FORM.depart, depart),
-    field(FORM.arrive, arrive),
-    field(FORM.bed, bed),
-    field(FORM.wake, wake),
-    field(FORM.travelWake, travelWake),
-    field(FORM.preflightDays, pre),
-    field(FORM.postDays, post),
-    field(FORM.caffeine, caffeine),
+    field(FORM.homeZone, 'globe', homeZone),
+    field(FORM.destZone, 'globe', destZone),
+    field(FORM.depart, 'plane', depart),
+    field(FORM.arrive, 'landing', arrive),
+    field(FORM.bed, 'bed', bed),
+    field(FORM.wake, 'clock', wake),
+    field(FORM.travelWake, 'clock', travelWake),
+    field(FORM.preflightDays, 'days', pre),
+    field(FORM.postDays, 'days', post),
+    field(FORM.caffeine, 'cup', caffeine),
   );
   const checks = document.createElement('div');
   checks.className = 'checks';
   const melLabel = document.createElement('label');
   melLabel.append(melatonin, document.createTextNode(FORM.melatonin));
+  melLabel.insertAdjacentHTML('beforeend', ICONS.pill);
   const boxLabel = document.createElement('label');
   boxLabel.append(lightBox, document.createTextNode(FORM.lightBox));
+  boxLabel.insertAdjacentHTML('beforeend', ICONS.lamp);
   checks.append(melLabel, boxLabel);
   form.append(grid, checks);
 
