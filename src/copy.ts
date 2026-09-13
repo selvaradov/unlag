@@ -76,8 +76,8 @@ export const FORM = {
   bed: 'Usual bedtime',
   wake: 'Usual wake time',
   travelWake: 'Wake time on travel day',
-  travelWakePlaceholder: 'as usual',
-  travelWakeHint: 'Leave empty to wake as usual, or four hours before the flight if that is earlier.',
+  travelWakeUsual: 'Wake as usual on the travel day, or four hours before the flight if that is earlier',
+  travelWakeHint: 'Untick to set the alarm yourself, for an early car or a long way to the airport.',
   preflightDays: 'Days to prepare before the flight',
   preflightHint: 'Bedtime moves up to an hour a day, so more than three days gains little.',
   postDays: 'Days to show after arrival',
@@ -228,7 +228,7 @@ export const LOOKUP = {
   button: 'Look up',
   looking: 'Looking up…',
   found: (from: string, to: string, dep: string, arr: string, length: string, stops: string[]) =>
-    `${from} ${dep} to ${to} ${arr}, ${length}${stops.length ? `, via ${stops.join(', ')}` : ''}. Filled in below.`,
+    `${from} ${dep} to ${to} ${arr}, ${length}${stops.length ? `, via ${stops.join(', ')}` : ''}.`,
   errors: {
     unavailable: 'Lookup is not set up on this site yet. Enter the flight by hand.',
     'bad-request': 'That does not look like a flight number. Try the form UA 900.',

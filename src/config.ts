@@ -67,6 +67,12 @@ export const MELATONIN_NIGHTS = 3;
 // Ignore avoid-light fragments shorter than this.
 export const MIN_DARK_FRAGMENT_MINUTES = 45;
 
+// Time choices offered in the form, in 15 minute steps within sensible ranges.
+export const TIME_STEP_MINUTES = 15;
+export const BEDTIME_RANGE = { from: '19:00', to: '03:00' };
+export const WAKE_RANGE = { from: '04:00', to: '12:00' };
+export const TRAVEL_WAKE_RANGE = { from: '02:00', to: '12:00' };
+
 // Default inputs shown when the page has no query string.
 export const DEFAULT_INPUT = {
   homeZone: 'Europe/London',

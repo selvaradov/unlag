@@ -4,12 +4,15 @@
 // Guards, so a bot cannot run up the bill:
 //   - only requests from this site's own pages are served
 //   - a monthly cap on lookups (LOOKUP_MONTHLY_CAP, default 300) and an hourly cap per client
+//   - the account's own spend this month, read from AeroAPI at most hourly, must stay under
+//     LOOKUP_SPEND_LIMIT dollars (default 4.5, inside the Personal tier's free allowance)
 //   - identical queries are cached at the CDN for a day
 import { getStore } from '@netlify/blobs';
 import type { Config, Context } from '@netlify/functions';
 
 const MONTHLY_CAP = Number(process.env.LOOKUP_MONTHLY_CAP ?? 300);
 const HOURLY_CAP_PER_CLIENT = Number(process.env.LOOKUP_HOURLY_CAP ?? 12);
+const SPEND_LIMIT = Number(process.env.LOOKUP_SPEND_LIMIT ?? 4.5);
 
 interface Point {
   code: string;
@@ -61,6 +64,22 @@ async function underCap(key: string, cap: number): Promise<boolean> {
   if (current >= cap) return false;
   await store.set(key, String(current + 1));
   return true;
+}
+
+// This month's spend according to AeroAPI, remembered for an hour so the check itself stays cheap.
+async function spendThisMonth(key: string): Promise<number> {
+  const store = getStore('lookups');
+  const hour = new Date().toISOString().slice(0, 13);
+  const cached = await store.get(`spend/${hour}`);
+  if (cached !== null) return Number(cached);
+  const res = await fetch('https://aeroapi.flightaware.com/aeroapi/account/usage', {
+    headers: { 'x-apikey': key, accept: 'application/json' },
+  });
+  if (!res.ok) throw new Error(`usage ${res.status}`);
+  const usage = (await res.json()) as { total_cost?: number };
+  const cost = Number(usage.total_cost ?? 0);
+  await store.set(`spend/${hour}`, String(cost));
+  return cost;
 }
 
 interface Leg {
@@ -119,8 +138,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
     if (!(await underCap(`client/${hour}/${client}`, HOURLY_CAP_PER_CLIENT)))
       return json({ error: 'rate-limited' }, 429);
     if (!(await underCap(`month/${month}`, MONTHLY_CAP))) return json({ error: 'quota' }, 429);
+    if ((await spendThisMonth(key)) >= SPEND_LIMIT) return json({ error: 'quota' }, 429);
   } catch {
-    // If the counter store is unavailable the lookup still runs; the CDN cache bounds repeats.
+    // If the counter store or the usage call is unavailable the lookup still runs; the caps above and the CDN cache bound repeats.
   }
 
   try {

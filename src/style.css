@@ -1373,7 +1373,7 @@ dialog.sheet::backdrop {
   margin-left: auto;
 }
 
-.walk-nav .icon-button.primary .icon {
+.walk-nav .icon-button.primary .chevron {
   transform: rotate(-90deg);
 }
 
@@ -1417,4 +1417,56 @@ dialog.sheet::backdrop {
 .trip-form .lookup {
   padding-bottom: 10px;
   border-bottom: 1px solid var(--rule);
+}
+
+/* Panel head and New trip */
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.new-trip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.new-trip:hover {
+  color: var(--ink);
+  background: var(--panel);
+}
+
+.new-trip .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.new-trip.in-sheet {
+  margin: 0 0 4px -8px;
+}
+
+/* Travel day wake */
+
+.travel-wake {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+
+.travel-wake .check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.travel-wake select {
+  min-width: 6em;
 }

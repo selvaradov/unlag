@@ -207,7 +207,6 @@ function replaceFeed(): void {
 function tripCard(): HTMLElement {
   return renderTripCard(plan, input, {
     editing,
-    onNewTrip: startNewTrip,
     onEdit: () => {
       editing = true;
       editSnapshot = JSON.parse(JSON.stringify(input));
@@ -347,6 +346,23 @@ function brand(): HTMLElement {
   return b;
 }
 
+function newTripButton(cls = ''): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = `text-button new-trip ${cls}`.trim();
+  b.innerHTML = `${ICONS.planeTakeoff}<span>${HEADER.newTrip}</span>`;
+  b.addEventListener('click', () => startNewTrip());
+  return b;
+}
+
+// Brand on the left, New trip on the right, at the top of a side panel.
+function panelHead(): HTMLElement {
+  const head = document.createElement('div');
+  head.className = 'panel-head';
+  head.append(brand(), newTripButton());
+  return head;
+}
+
 function daysBlock(now: number): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'days-block';
@@ -395,7 +411,7 @@ function render(): void {
     layout.className = 'layout three';
     const left = document.createElement('aside');
     left.className = 'panel';
-    left.append(brand(), renderHeadline(plan, now, selected, clearSelection), daysBlock(now));
+    left.append(panelHead(), renderHeadline(plan, now, selected, clearSelection), daysBlock(now));
     const main = document.createElement('main');
     main.className = 'feed-column';
     const host = document.createElement('div');
@@ -414,7 +430,7 @@ function render(): void {
     const aside = document.createElement('aside');
     aside.className = 'panel';
     aside.append(
-      brand(),
+      panelHead(),
       renderHeadline(plan, now, selected, clearSelection),
       tabs(),
       tab === 'plan' ? daysBlock(now) : tripCard(),
@@ -463,7 +479,9 @@ function render(): void {
       }),
       'day-sheet',
     );
-    const tripSheet = sheet(HEADER.trip, tripCard(), 'trip-sheet');
+    const sheetBody = document.createElement('div');
+    sheetBody.append(newTripButton('in-sheet'), tripCard());
+    const tripSheet = sheet(HEADER.trip, sheetBody, 'trip-sheet');
     app.append(daySheet, tripSheet);
     dayButton.addEventListener('click', () => daySheet.showModal());
     tripButton.addEventListener('click', () => tripSheet.showModal());

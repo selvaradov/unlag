@@ -55,7 +55,7 @@ export function metrics(px: number, width: number): Metrics {
     main,
     thin: base.thin * Math.min(s, 1.3),
     station,
-    dot: Math.round(station * 0.8),
+    dot: Math.round(station * 0.9),
     icon: Math.round(station * 1.2),
     font,
     meta: font - 2.5,
@@ -199,10 +199,10 @@ function wrap(text: string, availablePx: number, font: number, lines: number): s
   return out;
 }
 
-function icon(name: IconName, cx: number, cy: number, size: number, color: string): string {
+function icon(name: IconName, cx: number, cy: number, size: number, color: string, strokeWidth = 2): string {
   return ICONS[name].replace(
     '<svg class="icon ',
-    `<svg x="${cx - size / 2}" y="${cy - size / 2}" width="${size}" height="${size}" style="color:${color}" class="icon `,
+    `<svg x="${cx - size / 2}" y="${cy - size / 2}" width="${size}" height="${size}" stroke-width="${strokeWidth}" style="color:${color}" class="icon `,
   );
 }
 
@@ -340,6 +340,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
   const onMain = (t: number) => (t > plan.depart && t < plan.arrive ? mainX + m.kink : mainX);
   const selectedKey = opts.selected ? `${opts.selected.look}-${opts.selected.event.start}` : '';
   const isMain = (o: FeedItem) => ['sleep', 'nap', 'light', 'dark'].includes(o.look);
+  const isSideLine = (o: FeedItem) => o.look === 'caffeine' || o.look === 'noCaffeine';
   const mainStarts = items
     .filter(isMain)
     .map((o) => o.event.start)
@@ -358,7 +359,12 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
   const blocks: Block[] = [];
   const line = (cls: string, text: string, h: number): LabelLine => ({ cls, text: esc(text), h });
 
-  items.forEach((item, i) => {
+  // Side lines are drawn before the dots that sit on them, whatever their order in time.
+  const drawOrder = items
+    .map((_, i) => i)
+    .sort((a, b) => Number(!isSideLine(items[a])) - Number(!isSideLine(items[b])));
+  for (const i of drawOrder) {
+    const item = items[i];
     const e = item.event;
     const key = `${item.look}-${e.start}`;
     const sel = key === selectedKey ? ' selected' : '';
@@ -442,7 +448,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         // A dose at or just before the start shares the station; the window's own dot and label are dropped.
         const shared = doseWithin(e.start, 45 * MINUTE, 15 * MINUTE);
         if (!shared) {
-          body += `<circle class="dot" cx="${sideX}" cy="${y0}" r="${m.dot}"/>${icon(item.icon, sideX, y0, m.icon - 4, 'var(--dot-ink)')}`;
+          body += `<circle class="dot" cx="${sideX}" cy="${y0}" r="${m.dot}"/>${icon(item.icon, sideX, y0, Math.round(m.dot * 1.15), 'var(--dot-ink)', 1.75)}`;
           const lines = wrap(item.look === 'caffeine' ? FEED.caffeineFine : item.title, sideRoom, m.font, 2).map((t) =>
             line('side-title', t, titleH - 2),
           );
@@ -462,7 +468,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
       case 'caffeineDose':
       case 'melatonin': {
         const y0 = y(e.start);
-        const body = `<circle class="dot" cx="${sideX}" cy="${y0}" r="${m.dot}"/>${icon(item.icon, sideX, y0, m.icon - 4, 'var(--dot-ink)')}`;
+        const body = `<circle class="dot" cx="${sideX}" cy="${y0}" r="${m.dot}"/>${icon(item.icon, sideX, y0, Math.round(m.dot * 1.15), 'var(--dot-ink)', 1.75)}`;
         g(body, `look-${item.look}`);
         blocks.push({
           lane: 'side',
@@ -486,7 +492,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         break;
       }
     }
-  });
+  }
   svg.push(`<g class="labels">${layout(blocks)}</g>`);
   svg.push('</svg>');
   root.innerHTML = svg.join('');
