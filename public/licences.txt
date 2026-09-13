@@ -49,6 +49,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================
+Airport data
+================================================================
+
+The airport list (src/data/airports.json) is built from two sources:
+
+- OurAirports, https://ourairports.com/data/, released into the public
+  domain by its contributors.
+- OpenFlights airports database, https://openflights.org/data, used for
+  city names and time zones. Available under the Open Database License
+  (ODbL) 1.0, https://opendatacommons.org/licenses/odbl/1-0/. The derived
+  airport list is therefore also made available under the ODbL.
+
+================================================================
 IBM Plex Sans and IBM Plex Mono, https://github.com/IBM/plex
 SIL Open Font License 1.1
 ================================================================

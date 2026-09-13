@@ -1,5 +1,7 @@
 # Unlag
 
+*All code, and this README, written by Fable 5.1.*
+
 A jet lag planner. Pick the airports or type a flight number, give it your usual
 sleep, and it produces a day by day schedule of sleep, light, caffeine and
 melatonin around the flight. The plan lives in the page address, so a link is a
@@ -171,8 +173,10 @@ Layout:
 ## Licences
 
 Icons from Lucide (ISC) and the IBM Plex fonts (SIL Open Font License 1.1).
-Notices are in `public/licences.txt`, linked from the method page, and the
-font licence sits beside the fonts.
+The airport list derives from OurAirports (public domain) and OpenFlights
+(Open Database License 1.0), so `src/data/airports.json` is available under
+the ODbL. Notices are in `public/licences.txt`, linked from the method page,
+and the font licence sits beside the fonts.
 
 ## Not built
 
