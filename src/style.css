@@ -373,8 +373,17 @@ h3 {
   color: var(--caffeine-ink);
 }
 
-.look-noCaffeine .dot,
+/* Filled dots mean caffeine is on: a window opening or a dose. The hollow slashed dot is the cutoff. */
 .look-caffeineDose .dot {
+  fill: var(--caffeine);
+  stroke: var(--caffeine);
+}
+
+.look-caffeineDose {
+  color: var(--caffeine-ink);
+}
+
+.look-noCaffeine .dot {
   fill: var(--bg);
   stroke: var(--caffeine);
 }
