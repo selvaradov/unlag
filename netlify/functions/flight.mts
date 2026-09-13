@@ -7,6 +7,7 @@
 //   - the account's own spend this month, read from AeroAPI at most hourly, must stay under
 //     LOOKUP_SPEND_LIMIT dollars (default 4.5, inside the Personal tier's free allowance)
 //   - identical queries are cached at the CDN for a day
+//   - when the counters or the usage check cannot be read, the lookup is refused
 import { getStore } from '@netlify/blobs';
 import type { Config, Context } from '@netlify/functions';
 
@@ -57,13 +58,20 @@ function fromThisSite(req: Request): boolean {
   }
 }
 
-// Counts in a blob store; the counter's key carries the period, so old ones simply stop mattering.
+// Counts in a blob store with conditional writes, so two requests at once cannot both slip under
+// the cap. The counter's key carries the period, so old ones simply stop mattering.
 async function underCap(key: string, cap: number): Promise<boolean> {
   const store = getStore('lookups');
-  const current = Number((await store.get(key)) ?? 0);
-  if (current >= cap) return false;
-  await store.set(key, String(current + 1));
-  return true;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const found = await store.getWithMetadata(key, { type: 'text' });
+    const current = Number(found?.data ?? 0);
+    if (current >= cap) return false;
+    const result = found
+      ? await store.set(key, String(current + 1), { onlyIfMatch: found.etag })
+      : await store.set(key, '1', { onlyIfNew: true });
+    if (result.modified) return true;
+  }
+  throw new Error('counter contention');
 }
 
 // This month's spend according to AeroAPI, remembered for an hour so the check itself stays cheap.
@@ -134,13 +142,14 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const month = now.toISOString().slice(0, 7);
   const hour = now.toISOString().slice(0, 13);
   const client = context.ip || req.headers.get('x-nf-client-connection-ip') || 'unknown';
+  // The guards fail closed: if the counters or the usage check cannot be read, no lookup is made.
   try {
     if (!(await underCap(`client/${hour}/${client}`, HOURLY_CAP_PER_CLIENT)))
       return json({ error: 'rate-limited' }, 429);
     if (!(await underCap(`month/${month}`, MONTHLY_CAP))) return json({ error: 'quota' }, 429);
     if ((await spendThisMonth(key)) >= SPEND_LIMIT) return json({ error: 'quota' }, 429);
   } catch {
-    // If the counter store or the usage call is unavailable the lookup still runs; the caps above and the CDN cache bound repeats.
+    return json({ error: 'unavailable' }, 503);
   }
 
   try {

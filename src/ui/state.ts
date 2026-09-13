@@ -1,5 +1,6 @@
 // The whole plan input lives in the URL query string so a plan is bookmarkable.
 import type { CaffeineHabit, PlanInput } from '../algorithm/types.ts';
+import { LIMITS, clampDays, isClock, isZone, planProblem } from '../algorithm/validate.ts';
 import { DEFAULT_INPUT } from '../config.ts';
 
 const KEYS = {
@@ -23,32 +24,46 @@ export function defaultInput(): PlanInput {
   return JSON.parse(JSON.stringify(DEFAULT_INPUT));
 }
 
+// Reads a plan from the query string. Every value is checked and falls back to the example when
+// it is missing or out of bounds, so nothing downstream sees an input it cannot plan.
 export function readInput(search: string): PlanInput {
   const q = new URLSearchParams(search);
   const d = defaultInput();
-  const num = (k: string, fallback: number) => {
-    const v = Number(q.get(k));
-    return q.has(k) && Number.isFinite(v) ? v : fallback;
-  };
+  const zone = (k: string, fallback: string) => (isZone(q.get(k)) ? (q.get(k) as string) : fallback);
+  const clock = (k: string, fallback: string) => (isClock(q.get(k)) ? (q.get(k) as string) : fallback);
   const bool = (k: string, fallback: boolean) => (q.has(k) ? q.get(k) === '1' : fallback);
+  const code = (k: string) => {
+    const v = q.get(k) ?? '';
+    return /^[A-Z0-9]{3}$/.test(v) ? v : undefined;
+  };
   const caffeine = q.get(KEYS.caffeine);
-  return {
-    homeZone: q.get(KEYS.homeZone) ?? d.homeZone,
-    destZone: q.get(KEYS.destZone) ?? d.destZone,
-    homeAirport: q.get(KEYS.homeAirport) ?? (q.has(KEYS.homeZone) ? undefined : d.homeAirport),
-    destAirport: q.get(KEYS.destAirport) ?? (q.has(KEYS.destZone) ? undefined : d.destAirport),
-    habitualBed: q.get(KEYS.habitualBed) ?? d.habitualBed,
-    habitualWake: q.get(KEYS.habitualWake) ?? d.habitualWake,
+  const candidate: PlanInput = {
+    homeZone: zone(KEYS.homeZone, d.homeZone),
+    destZone: zone(KEYS.destZone, d.destZone),
+    homeAirport: code(KEYS.homeAirport) ?? (q.has(KEYS.homeZone) ? undefined : d.homeAirport),
+    destAirport: code(KEYS.destAirport) ?? (q.has(KEYS.destZone) ? undefined : d.destAirport),
+    habitualBed: clock(KEYS.habitualBed, d.habitualBed),
+    habitualWake: clock(KEYS.habitualWake, d.habitualWake),
     flight: { depart: q.get(KEYS.depart) ?? d.flight.depart, arrive: q.get(KEYS.arrive) ?? d.flight.arrive },
-    travelDayWake: q.has(KEYS.travelDayWake) ? q.get(KEYS.travelDayWake) || undefined : d.travelDayWake,
-    preflightDays: num(KEYS.preflightDays, d.preflightDays),
-    postDays: num(KEYS.postDays, d.postDays),
+    travelDayWake: isClock(q.get(KEYS.travelDayWake)) ? (q.get(KEYS.travelDayWake) as string) : undefined,
+    preflightDays: clampDays(q.get(KEYS.preflightDays), LIMITS.preflightDays, d.preflightDays),
+    postDays: clampDays(q.get(KEYS.postDays), LIMITS.postDays, d.postDays),
     caffeine: (['none', 'regular', 'off'] as CaffeineHabit[]).includes(caffeine as CaffeineHabit)
       ? (caffeine as CaffeineHabit)
       : d.caffeine,
     melatonin: bool(KEYS.melatonin, d.melatonin),
     lightBox: bool(KEYS.lightBox, d.lightBox),
   };
+  if (candidate.habitualBed === candidate.habitualWake) candidate.habitualWake = d.habitualWake;
+  // A flight that cannot be planned is replaced by the example flight, zones and all.
+  if (planProblem(candidate) !== null) {
+    candidate.flight = { ...d.flight };
+    candidate.homeZone = d.homeZone;
+    candidate.destZone = d.destZone;
+    candidate.homeAirport = d.homeAirport;
+    candidate.destAirport = d.destAirport;
+  }
+  return candidate;
 }
 
 export function writeInput(input: PlanInput): string {
@@ -70,8 +85,10 @@ export function writeInput(input: PlanInput): string {
   return `?${q.toString()}`;
 }
 
-// True when the URL carries a plan of its own, rather than falling back to the example.
+// True when the URL carries a plan of its own that can be drawn, rather than falling back to the example.
 export function hasPlanInUrl(search: string): boolean {
   const q = new URLSearchParams(search);
-  return q.has(KEYS.depart) && q.has(KEYS.arrive);
+  if (!q.has(KEYS.depart) || !q.has(KEYS.arrive)) return false;
+  const read = readInput(search);
+  return read.flight.depart === q.get(KEYS.depart) && read.flight.arrive === q.get(KEYS.arrive);
 }

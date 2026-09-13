@@ -60,7 +60,7 @@ export function eventInstruction(e: PlanEvent, ctx: EventContext): string {
       return 'A pill or a coffee. Small dose, you are not a regular user.';
     case 'melatonin':
       return ctx.direction === 'delay'
-        ? 'Optional, as a sleep aid only. At this time it does not move your clock.'
+        ? 'Optional, as a sleep aid. The plan does not count on it moving your clock at this hour.'
         : 'Timed to move your clock earlier. Expect a little drowsiness.';
     case 'flight':
       return 'In the air.';
@@ -89,6 +89,7 @@ export const FORM = {
   errors: {
     arrivalBeforeDeparture: 'Arrival is before departure. Check the dates and the two local times.',
     sleepZero: 'Bedtime and wake time are the same.',
+    flightLength: 'That journey is longer than two days. Check the dates.',
     airport: 'Pick both airports from the list.',
   },
 };
@@ -130,7 +131,7 @@ export const HEADLINE = {
   startsIn: (d: string) => `Starts in ${d}.`,
   caffeineAside: (t: string) => `Caffeine is fine until ${t}.`,
   notStarted: (day: string) => `Your plan starts on ${day}.`,
-  over: 'Your plan is over. You should be adapted.',
+  over: 'The scheduled days have ended.',
   optional: 'optional',
   close: 'Back to now',
 };
@@ -172,6 +173,8 @@ export const HEADER = {
     'Every instruction is placed around the nightly low point of your body clock, moved a little each day by timed light.',
   howHref: 'how',
   back: 'Back to the plan',
+  licences: 'Third party notices',
+  licencesHref: 'licences.txt',
 };
 
 export const DAY_AXIS = {
@@ -212,7 +215,7 @@ export const METHOD: { title: string; text: string }[] = [
   },
   {
     title: 'Caffeine and melatonin',
-    text: 'Caffeine is a wakefulness tool with a cutoff before bed, six hours for regular users and eight for others. Melatonin taken in the biological afternoon advances the clock, so for eastward trips it is timed to do that. For westward trips the shifting dose would fall in the biological morning, which is impractical, so it is offered only as an optional sleep aid.',
+    text: 'Caffeine is a wakefulness tool with a cutoff before bed, six hours for regular users and eight for others. Melatonin taken in the biological afternoon advances the clock, so for eastward trips it is timed to do that. For westward trips the shifting dose would fall in the biological morning, which is impractical, so it is offered only as an optional sleep aid. Its effect on the clock depends on the hour by your body clock, which the plan does not track closely, so no shift is counted on it.',
   },
   {
     title: 'What the prediction means',
@@ -256,6 +259,8 @@ export const WALK = {
 export const NOTIFY = {
   off: 'Notify me',
   on: 'Notifications on',
+  switchTo: 'Notify me for this plan',
+  otherHint: 'This device follows a different plan. Tap to switch it to this one.',
   offHint: 'A notification on this device as each instruction starts.',
   onHint: 'This device will be told as each instruction starts. Tap to turn off.',
   justOn: 'Done. The first notification comes with the next instruction.',

@@ -71,21 +71,26 @@ function homeNights(input: PlanInput, depart: number, sign: number, total: numbe
 
 function destinationNights(input: PlanInput, arrive: number, lastWake: number): Sleep[] {
   const zone = input.destZone;
-  const arriveDate = localDate(arrive, zone);
-  let bed = bedInstant(arriveDate, input.habitualBed, zone);
-  let wake = atClock(addDays(arriveDate, 1, zone), input.habitualWake, zone);
-  if (bed < arrive + HOUR) {
-    const landedBeforeWake = localHour(arrive, zone) < clockHours(input.habitualWake);
-    if (landedBeforeWake) {
-      bed = arrive + HOUR;
-      wake = atClock(arriveDate, input.habitualWake, zone);
-      if (wake - bed < cfg.MIN_SLEEP_HOURS * HOUR) wake = bed + cfg.MIN_SLEEP_HOURS * HOUR;
-    } else {
-      bed = bedInstant(addDays(arriveDate, 1, zone), input.habitualBed, zone);
-      wake = atClock(addDays(arriveDate, 2, zone), input.habitualWake, zone);
-    }
+  const bedClock = clockHours(input.habitualBed);
+  const wakeClock = clockHours(input.habitualWake);
+  const landedAt = localHour(arrive, zone);
+  // Hours from landing until the next habitual bedtime and wake, on the destination clock.
+  const untilBed = (bedClock - landedAt + 24) % 24;
+  const untilWake = (wakeClock - landedAt + 24) % 24;
+  let bed: number;
+  let wake: number;
+  if (untilBed <= cfg.EVENING_LANDING_HOURS_BEFORE_BED || untilWake < untilBed) {
+    // Evening or night landing: bed soon after landing, up at the usual time, never a short night.
+    bed = arrive + cfg.LANDING_TO_BED_HOURS * HOUR;
+    wake = bed + untilWake * HOUR - cfg.LANDING_TO_BED_HOURS * HOUR;
+    while (wake <= bed) wake += DAY;
+    if (wake - bed < cfg.MIN_SLEEP_HOURS * HOUR) wake = bed + cfg.MIN_SLEEP_HOURS * HOUR;
+  } else {
+    // Daytime landing: tonight's usual bedtime, a little earlier after a very long day.
+    bed = arrive + untilBed * HOUR;
+    wake = atClock(addDays(localDate(bed, zone), 1, zone), input.habitualWake, zone);
+    if (bed - lastWake > cfg.VERY_LONG_WAKE_HOURS * HOUR) bed -= cfg.EARLY_FIRST_BED_HOURS * HOUR;
   }
-  if (bed - lastWake > cfg.VERY_LONG_WAKE_HOURS * HOUR) bed -= cfg.EARLY_FIRST_BED_HOURS * HOUR;
   const out: Sleep[] = [{ start: bed, end: wake }];
   let date = localDate(wake, zone);
   for (let i = 1; i < input.postDays; i++) {

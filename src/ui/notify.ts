@@ -1,5 +1,6 @@
 // Push notifications for this plan on this device: a button that subscribes or unsubscribes,
-// with a line of status beneath it.
+// with a line of status beside it. The subscription is tied to a plan, so a device following a
+// different plan is offered a switch.
 import { NOTIFY } from '../copy.ts';
 import { ICONS } from './icons.ts';
 
@@ -23,8 +24,25 @@ function toKey(base64: string): Uint8Array {
 }
 
 async function currentSubscription(): Promise<PushSubscription | null> {
+  if (!supported()) return null;
   const reg = await navigator.serviceWorker.getRegistration();
   return reg ? reg.pushManager.getSubscription() : null;
+}
+
+// The plan the server has for this device's subscription, or null.
+async function followedPlan(sub: PushSubscription): Promise<string | null> {
+  const res = await fetch(`/api/push/status?endpoint=${encodeURIComponent(sub.endpoint)}`);
+  if (!res.ok) return null;
+  return ((await res.json()) as { search: string | null }).search;
+}
+
+async function save(sub: PushSubscription, search: string): Promise<void> {
+  const saved = await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ subscription: sub.toJSON(), search }),
+  });
+  if (!saved.ok) throw new Error('failed');
 }
 
 async function subscribe(search: string): Promise<void> {
@@ -34,16 +52,13 @@ async function subscribe(search: string): Promise<void> {
   const { publicKey } = (await res.json()) as { publicKey: string };
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('denied');
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: toKey(publicKey) as BufferSource,
-  });
-  const saved = await fetch('/api/push/subscribe', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ subscription: sub.toJSON(), search }),
-  });
-  if (!saved.ok) throw new Error('failed');
+  const sub =
+    (await reg.pushManager.getSubscription()) ??
+    (await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: toKey(publicKey) as BufferSource,
+    }));
+  await save(sub, search);
 }
 
 async function unsubscribe(): Promise<void> {
@@ -57,6 +72,16 @@ async function unsubscribe(): Promise<void> {
   await sub.unsubscribe();
 }
 
+// After an edit, a device that follows a plan keeps following the edited one.
+export async function syncSubscription(search: string): Promise<void> {
+  const sub = await currentSubscription();
+  if (!sub) return;
+  const followed = await followedPlan(sub);
+  if (followed !== null && followed !== search) await save(sub, search);
+}
+
+type State = 'off' | 'on' | 'other';
+
 export function renderNotify(search: string): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'notify';
@@ -67,22 +92,25 @@ export function renderNotify(search: string): HTMLElement {
   status.className = 'notify-status';
   wrap.append(button, status);
 
-  const show = (on: boolean, message = '') => {
-    button.innerHTML = `${on ? ICONS.check : ICONS.bell}<span>${on ? NOTIFY.on : NOTIFY.off}</span>`;
-    status.textContent = message || (on ? NOTIFY.onHint : NOTIFY.offHint);
+  const show = (state: State, message = '') => {
+    const label = state === 'on' ? NOTIFY.on : state === 'other' ? NOTIFY.switchTo : NOTIFY.off;
+    const icon = state === 'on' ? ICONS.check : ICONS.bell;
+    button.innerHTML = `${icon}<span>${label}</span>`;
+    status.textContent =
+      message || (state === 'on' ? NOTIFY.onHint : state === 'other' ? NOTIFY.otherHint : NOTIFY.offHint);
   };
 
   if (!supported()) {
     wrap.classList.add('impossible');
     button.disabled = true;
-    show(false, NOTIFY.unsupported);
+    show('off', NOTIFY.unsupported);
     return wrap;
   }
   if (needsInstall()) {
     // No install prompt exists on iOS; the share sheet is where Add to Home Screen lives.
     wrap.classList.add('impossible');
     button.disabled = true;
-    show(false, NOTIFY.install);
+    show('off', NOTIFY.install);
     const add = document.createElement('button');
     add.type = 'button';
     add.className = 'icon-button';
@@ -100,27 +128,31 @@ export function renderNotify(search: string): HTMLElement {
     wrap.appendChild(add);
     return wrap;
   }
-  let on = false;
-  void currentSubscription().then((sub) => {
-    on = sub !== null;
-    show(on);
-  });
-  show(false, NOTIFY.checking);
+
+  let state: State = 'off';
+  show('off', NOTIFY.checking);
+  void (async () => {
+    const sub = await currentSubscription();
+    const followed = sub ? await followedPlan(sub) : null;
+    state = followed === null ? 'off' : followed === search ? 'on' : 'other';
+    show(state);
+  })();
+
   button.addEventListener('click', async () => {
     button.disabled = true;
     try {
-      if (on) {
+      if (state === 'on') {
         await unsubscribe();
-        on = false;
-        show(false);
+        state = 'off';
+        show(state);
       } else {
         await subscribe(search);
-        on = true;
-        show(true, NOTIFY.justOn);
+        state = 'on';
+        show(state, NOTIFY.justOn);
       }
     } catch (err) {
       const code = (err as Error).message;
-      show(on, NOTIFY.errors[code] ?? NOTIFY.errors.failed);
+      show(state, NOTIFY.errors[code] ?? NOTIFY.errors.failed);
     } finally {
       button.disabled = false;
     }

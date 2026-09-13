@@ -128,6 +128,40 @@ describe('options', () => {
   });
 });
 
+describe('landing late', () => {
+  const flight = (arrive: string) =>
+    generatePlan({ ...base, flight: { depart: '2026-09-16T10:35', arrive }, preflightDays: 1 });
+  const firstNight = (plan: ReturnType<typeof generatePlan>) =>
+    plan.events.find((e) => e.kind === 'sleep' && e.start >= plan.arrive)!;
+
+  it('goes to bed soon after a late evening landing rather than the next night', () => {
+    const plan = flight('2026-09-16T23:30');
+    const night = firstNight(plan);
+    expect(local(plan, night.start)).toBe('Thu 01:00');
+    expect(local(plan, night.end)).toBe('Thu 07:30');
+  });
+
+  it('sleeps after a small hours landing and wakes at least the minimum later', () => {
+    const plan = flight('2026-09-17T03:00');
+    const night = firstNight(plan);
+    expect(local(plan, night.start)).toBe('Thu 04:30');
+    expect(local(plan, night.end)).toBe('Thu 11:00');
+  });
+
+  it("keeps tonight's bedtime after a daytime landing", () => {
+    const plan = flight('2026-09-16T13:35');
+    const night = firstNight(plan);
+    expect(local(plan, night.start)).toBe('Wed 22:00');
+  });
+
+  it('sleeps early after an evening landing close to bedtime', () => {
+    const plan = flight('2026-09-16T20:30');
+    const night = firstNight(plan);
+    expect(local(plan, night.start)).toBe('Wed 22:00');
+    expect(local(plan, night.end)).toBe('Thu 07:00');
+  });
+});
+
 describe('eastward overnight flight', () => {
   // San Francisco to London, leaving in the evening and landing the next afternoon.
   const plan = generatePlan({

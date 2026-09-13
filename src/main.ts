@@ -24,6 +24,7 @@ import { ICONS } from './ui/icons.ts';
 import { defaultInput, hasPlanInUrl, readInput, writeInput } from './ui/state.ts';
 import { renderWalkthrough } from './ui/walkthrough.ts';
 import { loadAirports } from './data/airports.ts';
+import { syncSubscription } from './ui/notify.ts';
 import { renderTripCard } from './ui/tripCard.ts';
 
 Settings.defaultLocale = 'en-GB';
@@ -265,6 +266,8 @@ function tripCard(): HTMLElement {
     onDone: () => {
       editing = false;
       editSnapshot = null;
+      // A device already following this plan keeps following the edited version.
+      void syncSubscription(writeInput(input)).catch(() => undefined);
       rerenderKeepingSheet('trip-sheet');
     },
     onChange: (next) => {

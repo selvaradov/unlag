@@ -1,6 +1,7 @@
 // The trip inputs as reusable controls, shared by the edit form and the walkthrough.
 import { DateTime } from 'luxon';
 import type { CaffeineHabit, PlanInput } from '../algorithm/types.ts';
+import { planProblem } from '../algorithm/validate.ts';
 import { BEDTIME_RANGE, TIME_STEP_MINUTES, TRAVEL_WAKE_RANGE, WAKE_RANGE } from '../config.ts';
 import { FORM, LOOKUP } from '../copy.ts';
 import type { Airport } from '../data/airports.ts';
@@ -66,11 +67,12 @@ function text(value: string, attrs: Record<string, string> = {}): HTMLInputEleme
 
 // Checks the inputs make a plan that can be drawn. Returns a message or null.
 export function validate(input: PlanInput): string | null {
-  const dep = DateTime.fromISO(input.flight.depart, { zone: input.homeZone });
-  const arr = DateTime.fromISO(input.flight.arrive, { zone: input.destZone });
-  if (!dep.isValid || !arr.isValid || arr <= dep) return FORM.errors.arrivalBeforeDeparture;
-  if (input.habitualBed === input.habitualWake) return FORM.errors.sleepZero;
-  return null;
+  const problem = planProblem(input);
+  if (problem === null) return null;
+  if (problem === 'sleep') return FORM.errors.sleepZero;
+  if (problem === 'order') return FORM.errors.arrivalBeforeDeparture;
+  if (problem === 'length') return FORM.errors.flightLength;
+  return FORM.errors.arrivalBeforeDeparture;
 }
 
 export interface TripFields {

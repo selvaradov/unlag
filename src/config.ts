@@ -39,6 +39,10 @@ export const NAP_MAX_MINUTES = 90;
 export const NAP_MIN_HOURS_BEFORE_BED = 8;
 export const NAP_EARLIEST_HOURS_AFTER_WAKE = 1;
 
+// Landing within this many hours before habitual bedtime, or during the night, means sleeping soon after landing.
+export const EVENING_LANDING_HOURS_BEFORE_BED = 3;
+export const LANDING_TO_BED_HOURS = 1.5;
+
 // A first destination night may start this much earlier than habitual bedtime when the day has been very long.
 export const EARLY_FIRST_BED_HOURS = 1;
 export const VERY_LONG_WAKE_HOURS = 20;

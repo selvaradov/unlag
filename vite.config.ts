@@ -33,7 +33,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // Registration happens in main.ts so the page reloads when a new worker takes over.
       injectRegister: null,
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'licences.txt'],
       manifest: {
         name: 'Unlag',
         short_name: 'Unlag',

@@ -15,6 +15,6 @@ root.innerHTML = `
   <main>
     <h1>${HEADER.how}</h1>
     ${METHOD.map(({ title, text }) => `<h2>${title}</h2><p>${text}</p>`).join('')}
-    <p class="footer">${FOOTER}</p>
+    <p class="footer">${FOOTER} <a href="${HEADER.licencesHref}">${HEADER.licences}</a>.</p>
   </main>
 `;
