@@ -133,7 +133,7 @@ export const FEED = {
   noCaffeineDetail: "Anything now would cut into tonight's sleep.",
   caffeineFine: 'caffeine is fine',
   otherZone: (zone: string) => `${zone} on the right`,
-  landed: (t: string, zone: string) => `landed ${t} ${zone}`,
+  landed: (t: string) => `landed ${t}`,
   clocksChange: (hours: number, direction: Direction) =>
     `clocks ${direction === 'delay' ? 'back' : 'forward'} ${hours} h`,
 };

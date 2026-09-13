@@ -30,7 +30,7 @@ describe('feed', () => {
     expect(el.querySelectorAll('.day-head').length).toBeGreaterThanOrEqual(8);
     const landing = el.querySelector<SVGTextElement>('text.landing')!;
     expect(Number(landing.getAttribute('y')) - 4).toBeCloseTo(yOf(plan, plan.arrive, px), 3);
-    expect(landing.textContent).toContain('13:35 PDT');
+    expect(landing.textContent).toContain('13:35');
     expect(el.querySelector('#now')).not.toBeNull();
   });
 
@@ -45,8 +45,10 @@ describe('feed', () => {
   });
 
   it('switches hour labels to the destination clock after landing', () => {
-    const el = renderFeed(plan, opts(plan.depart));
+    const el = renderFeed(plan, { ...opts(plan.depart), width: 800 });
     const labels = [...el.querySelectorAll<SVGTextElement>('text.hour-label:not(.other)')];
+    expect(el.querySelectorAll('text.hour-label.other').length).toBeGreaterThan(0);
+    expect(renderFeed(plan, opts(plan.depart)).querySelectorAll('text.hour-label.other').length).toBe(0);
     const at = (t: number) =>
       labels.find((l) => Math.abs(Number(l.getAttribute('y')) - 4 - yOf(plan, t, px)) < 1)?.textContent;
     expect(at(plan.arrive - 95 * 60_000)).toBe('20:00');

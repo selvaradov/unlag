@@ -14,6 +14,8 @@ export const MAX_PX_PER_HOUR = 150;
 
 const LEFT_COL = 56;
 const RIGHT_COL = 56;
+// Below this width the other zone's hour column is dropped to make room for labels.
+const NARROW = 480;
 const MAIN_OFFSET = 40;
 const KINK = 18;
 const LABEL_GAP = 24;
@@ -155,7 +157,9 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
   const y = (t: number) => yOf(plan, t, px);
   const height = y(plan.planEnd) + px;
   const mainX = LEFT_COL + MAIN_OFFSET;
-  const sideX = Math.min(width - RIGHT_COL - 96, mainX + SIDE_LINE_OFFSET);
+  const narrow = width < NARROW;
+  const rightCol = narrow ? 10 : RIGHT_COL;
+  const sideX = Math.min(width - rightCol - 120, mainX + SIDE_LINE_OFFSET);
   const labelX = mainX + LABEL_GAP;
   const items = feedItems(plan);
   const step = labelStep(px);
@@ -174,11 +178,12 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     const yy = y(m.t);
     const labelled = m.hour % step === 0;
     svg.push(
-      `<line class="hour-line${labelled ? '' : ' minor'}" x1="${LEFT_COL}" x2="${width - RIGHT_COL}" y1="${yy}" y2="${yy}"/>`,
+      `<line class="hour-line${labelled ? '' : ' minor'}" x1="${LEFT_COL}" x2="${width - rightCol}" y1="${yy}" y2="${yy}"/>`,
     );
     if (labelled) {
       svg.push(`<text class="hour-label" x="${LEFT_COL - 8}" y="${yy + 4}" text-anchor="end">${m.label}</text>`);
-      svg.push(`<text class="hour-label other" x="${width - RIGHT_COL + 8}" y="${yy + 4}">${m.other}</text>`);
+      if (!narrow)
+        svg.push(`<text class="hour-label other" x="${width - rightCol + 8}" y="${yy + 4}">${m.other}</text>`);
     }
   }
 
@@ -235,7 +240,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         let body = `<circle class="station" cx="${mainX}" cy="${yDep}" r="${STATION_R}"/>${icon('plane', mainX, yDep, 14, 'var(--station-ink)')}`;
         body += `<circle class="station" cx="${mainX}" cy="${yArr}" r="${STATION_R}"/>${icon('landing', mainX, yArr, 14, 'var(--station-ink)')}`;
         body += `<text class="seg-title" x="${labelX}" y="${yDep - 8}">${esc(item.title)} <tspan class="seg-meta">${duration(e.end - e.start)}</tspan></text>`;
-        body += `<text class="seg-title landing" x="${labelX}" y="${yArr + 4}">${esc(FEED.landed(clock(plan, plan.arrive), zoneAbbr(plan, plan.arrive)))}</text>`;
+        body += `<text class="seg-title landing" x="${labelX}" y="${yArr + 4}">${esc(FEED.landed(clock(plan, plan.arrive)))}</text>`;
         body += `<text class="seg-meta" x="${labelX}" y="${yArr + 20}">${esc(FEED.clocksChange(plan.totalShiftHours, plan.direction))}</text>`;
         g(body, 'look-flight');
         break;
@@ -303,10 +308,11 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     if (!m.dayStart) continue;
     const zone = zoneAt(plan, m.t);
     const d = DateTime.fromMillis(m.t, { zone });
+    const other = zoneAbbr(plan, m.t, zone === plan.input.homeZone ? plan.input.destZone : plan.input.homeZone);
     const head = el(
       'div',
       'day-head',
-      `<span>${d.toFormat('cccc d LLLL')}</span><span class="zone">${zoneAbbr(plan, m.t)} · ${FEED.otherZone(zoneAbbr(plan, m.t, zone === plan.input.homeZone ? plan.input.destZone : plan.input.homeZone))}</span>`,
+      `<span>${d.toFormat('cccc d LLLL')}</span><span class="zone">${zoneAbbr(plan, m.t)}${narrow ? '' : ` · ${FEED.otherZone(other)}`}</span>`,
     );
     head.style.top = `${y(m.t)}px`;
     head.dataset.day = d.toISODate() ?? '';

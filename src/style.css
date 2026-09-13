@@ -419,7 +419,7 @@ h3 {
 .now-line {
   position: absolute;
   left: 56px;
-  right: 56px;
+  right: 10px;
   border-top: 1.5px dashed var(--now);
   z-index: 3;
   pointer-events: none;
