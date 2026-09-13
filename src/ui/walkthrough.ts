@@ -1,6 +1,6 @@
 // The first run: three steps that build a plan when the page opens without one.
 import type { PlanInput } from '../algorithm/types.ts';
-import { APP_NAME, TAGLINE, WALK } from '../copy.ts';
+import { APP_NAME, CREDIT, TAGLINE, WALK } from '../copy.ts';
 import { createTripFields } from './tripFields.ts';
 import { ICONS } from './icons.ts';
 
@@ -79,6 +79,10 @@ export function renderWalkthrough(opts: WalkthroughOptions): HTMLElement {
   example.textContent = WALK.example;
   example.addEventListener('click', () => opts.onExample());
   root.appendChild(example);
+  const credit = document.createElement('p');
+  credit.className = 'footer credit';
+  credit.textContent = CREDIT;
+  root.appendChild(credit);
 
   const show = () => {
     panels.forEach((p, i) => (p.hidden = i !== step));

@@ -1620,3 +1620,46 @@ html.theme-switching .feed svg.rail {
 .footer a {
   color: inherit;
 }
+
+/* Method page detail */
+
+.how-page .detail-title {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.how-page h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 22px 0 6px;
+}
+
+.how-page pre {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.footer.credit {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 6px;
+}
+
+.walkthrough .footer.credit {
+  text-align: center;
+  margin-top: 28px;
+}
+
+.how-lede .footer.credit {
+  grid-column: 2;
+  margin-top: 4px;
+}

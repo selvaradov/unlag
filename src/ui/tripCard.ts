@@ -1,7 +1,7 @@
 // The trip at a glance with the calendar and link actions and the method behind the plan.
 // While editing, the form takes the card's place with Cancel and Done beneath it.
 import type { Plan, PlanInput } from '../algorithm/types.ts';
-import { COPY_LINK, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, SUMMARY, zoneCity } from '../copy.ts';
+import { COPY_LINK, CREDIT, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, SUMMARY, zoneCity } from '../copy.ts';
 import { airportsNow, findAirport } from '../data/airports.ts';
 import { renderForm } from './form.ts';
 import { renderNotify } from './notify.ts';
@@ -49,7 +49,7 @@ export function routeTitle(input: PlanInput, el: HTMLElement): void {
 export function renderHowLede(): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'how-lede';
-  wrap.innerHTML = `${ICONS.info}<p>${HEADER.howLede} <a href="${HEADER.howHref}">${HEADER.how}</a></p><p class="footer">${FOOTER}</p>`;
+  wrap.innerHTML = `${ICONS.info}<p>${HEADER.howLede} <a href="${HEADER.howHref}">${HEADER.how}</a></p><p class="footer">${FOOTER}</p><p class="footer credit">${CREDIT}</p>`;
   return wrap;
 }
 

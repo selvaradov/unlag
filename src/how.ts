@@ -1,7 +1,7 @@
 // The methodology page: the rules behind the plan, in plain words.
 import './fonts.css';
 import './style.css';
-import { APP_NAME, FOOTER, HEADER, METHOD } from './copy.ts';
+import { APP_NAME, CREDIT, FOOTER, HEADER, METHOD, METHOD_DETAIL } from './copy.ts';
 import { ICONS } from './ui/icons.ts';
 import { applyTheme, currentTheme } from './ui/theme.ts';
 
@@ -17,6 +17,10 @@ root.innerHTML = `
   <main>
     <h1>${HEADER.how}</h1>
     ${METHOD.map(({ title, text }) => `<h2>${title}</h2><p>${text}</p>`).join('')}
+    <h2 class="detail-title">${METHOD_DETAIL.title}</h2>
+    <p>${METHOD_DETAIL.intro}</p>
+    ${METHOD_DETAIL.steps.map(({ title, code }) => `<h3>${title}</h3><pre>${code}</pre>`).join('')}
     <p class="footer">${FOOTER} <a href="${HEADER.licencesHref}">${HEADER.licences}</a>.</p>
+    <p class="footer credit">${CREDIT}</p>
   </main>
 `;

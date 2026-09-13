@@ -295,6 +295,104 @@ export const THEME = {
   darkGround: '#14151a',
 };
 
+export const CREDIT = 'Written by Claude Fable 5.1.';
+
+// The algorithm, step by step, for the method page. Plain words with the shape of code.
+export const METHOD_DETAIL = {
+  title: 'The algorithm, step by step',
+  intro:
+    'This is what the generator in src/algorithm/generate.ts does, in the order it does it. Every time is an instant in UTC; only the display turns instants into local clocks.',
+  steps: [
+    {
+      title: '1. Set up',
+      code: `home_tmin_clock = habitual_wake - 3h
+delay_hours     = (home_offset - dest_offset) mod 24
+advance_hours   = 24 - delay_hours
+direction       = advance if advance_hours <= 9 else delay
+total_shift     = advance_hours if advance else delay_hours
+remaining       = total_shift`,
+    },
+    {
+      title: '2. Home nights before the flight',
+      code: `for each of the preflight days (at most 3):
+    shift += 1h (delay) or 0.5h (advance), capped at total_shift
+    bed  = habitual_bed  + shift
+    wake = habitual_wake + shift
+on the travel day:
+    wake = travel_day_wake if given
+           else min(shifted wake, departure - 4h)
+    if wake - bed < 6.5h: bed = wake - 6.5h`,
+    },
+    {
+      title: '3. Sleep on the plane',
+      code: `tmin_near_flight = the Tmin closest to the middle of the flight
+body_night       = [tmin - 5h, tmin + 3h]
+overlap          = body_night ∩ flight, less 30 min at each end
+if overlap >= 2h: schedule sleep for the overlap`,
+    },
+    {
+      title: '4. First night at the destination',
+      code: `until_bed  = hours from landing to the next habitual bedtime, dest clock
+until_wake = hours from landing to the next habitual wake
+if until_bed <= 3h or until_wake < until_bed:      # evening or night landing
+    bed  = landing + 1.5h
+    wake = next habitual wake, at least 6.5h later
+else:                                              # daytime landing
+    bed  = tonight's habitual bedtime
+    if awake since last wake > 20h: bed -= 1h
+    wake = next habitual wake
+then habitual nights for the days shown`,
+    },
+    {
+      title: '5. Walk Tmin forward a day at a time',
+      code: `tmin = home_tmin_clock on the first morning
+while remaining > 0 and within the plan:
+    after_landing = tmin + 24h > landing
+    max_rate = (1.5h delay | 1.0h advance) + 0.5h bonus   if after_landing
+               1.0h delay | 0.5h advance                  before
+    provisional = tmin + 24h ± min(remaining, max_rate)
+    windows = light_windows(tmin, provisional)
+    earned  = min(remaining, rate given windows.achieved)
+    next    = tmin + 24h ± earned, rounded to 5 min
+    remaining -= earned
+    tmin = next`,
+    },
+    {
+      title: '6. Light windows and what they earn',
+      code: `delay:   seek  = the 4 waking hours before next Tmin
+         avoid = [prev Tmin, prev Tmin + 4h]
+advance: seek  = the 4 waking hours after prev Tmin
+         avoid = [next Tmin - 4h, next Tmin]
+seek pieces outside sleep are kept; avoid pieces shorter than 45 min are dropped
+achieved = Σ over seek pieces of (length / 4h) × quality
+quality  = 1.0 in daylight hours (07:00 to 19:00 local) or with a light box
+           0.6 under room light
+earned   = unmanaged_rate + bonus × achieved   after landing
+           preflight_max × achieved            before`,
+    },
+    {
+      title: '7. Naps, caffeine, melatonin',
+      code: `for each waking stretch (wake to next bed):
+    if stretch > 18h:
+        nap = up to 90 min, first choice inside an avoid-light window on the plane,
+              then on the plane, then any avoid-light window, then as early as
+              allowed; never later than bed - 8h
+    caffeine fine from wake (or nap end) until bed - cutoff
+        cutoff = 6h for regular users, 8h otherwise
+    if stretch >= 18h: suggest a dose at wake or nap end, and on landing,
+        never within 1h of the cutoff
+melatonin:
+    advance: 0.5 mg at next Tmin - 10h, while a shift remains
+    delay:   optional 0.5 mg at bed - 30 min, first 3 destination nights`,
+    },
+    {
+      title: '8. Adapted',
+      code: `adapted_at = the first Tmin where remaining reaches 0
+predicted date shown on the trip card; no light instructions after it`,
+    },
+  ],
+};
+
 export const PICKER = {
   noMatch: 'No airport matches. Try the code, such as SFO.',
 };
