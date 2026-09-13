@@ -5,6 +5,8 @@ import { DEFAULT_INPUT } from '../config.ts';
 const KEYS = {
   homeZone: 'from',
   destZone: 'to',
+  homeAirport: 'fromAp',
+  destAirport: 'toAp',
   depart: 'dep',
   arrive: 'arr',
   habitualBed: 'bed',
@@ -33,6 +35,8 @@ export function readInput(search: string): PlanInput {
   return {
     homeZone: q.get(KEYS.homeZone) ?? d.homeZone,
     destZone: q.get(KEYS.destZone) ?? d.destZone,
+    homeAirport: q.get(KEYS.homeAirport) ?? (q.has(KEYS.homeZone) ? undefined : d.homeAirport),
+    destAirport: q.get(KEYS.destAirport) ?? (q.has(KEYS.destZone) ? undefined : d.destAirport),
     habitualBed: q.get(KEYS.habitualBed) ?? d.habitualBed,
     habitualWake: q.get(KEYS.habitualWake) ?? d.habitualWake,
     flight: { depart: q.get(KEYS.depart) ?? d.flight.depart, arrive: q.get(KEYS.arrive) ?? d.flight.arrive },
@@ -51,6 +55,8 @@ export function writeInput(input: PlanInput): string {
   const q = new URLSearchParams();
   q.set(KEYS.homeZone, input.homeZone);
   q.set(KEYS.destZone, input.destZone);
+  if (input.homeAirport) q.set(KEYS.homeAirport, input.homeAirport);
+  if (input.destAirport) q.set(KEYS.destAirport, input.destAirport);
   q.set(KEYS.depart, input.flight.depart);
   q.set(KEYS.arrive, input.flight.arrive);
   q.set(KEYS.habitualBed, input.habitualBed);

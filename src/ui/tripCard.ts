@@ -1,6 +1,7 @@
-// The trip at a glance, with the calendar and link actions and a toggle to edit the inputs.
+// The trip at a glance with the calendar and link actions. While editing, the form takes its place.
 import type { Plan, PlanInput } from '../algorithm/types.ts';
 import { COPY_LINK, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, SUMMARY, zoneCity } from '../copy.ts';
+import { findAirport, loadAirports } from '../data/airports.ts';
 import { renderForm } from './form.ts';
 import { clock, dayLabel, duration, shortDay, zoneAbbr } from './format.ts';
 import { ICONS } from './icons.ts';
@@ -31,13 +32,44 @@ export interface TripCardOptions {
   onChange: (next: PlanInput) => void;
 }
 
+// Route title from airport cities when known, else from the zones. Fills in once the list has loaded.
+export function routeTitle(input: PlanInput, el: HTMLElement): void {
+  el.textContent = SUMMARY.route(zoneCity(input.homeZone), zoneCity(input.destZone));
+  if (!input.homeAirport || !input.destAirport) return;
+  void loadAirports().then((list) => {
+    const a = findAirport(list, input.homeAirport!);
+    const b = findAirport(list, input.destAirport!);
+    if (a && b) el.textContent = SUMMARY.route(a.city, b.city);
+  });
+}
+
 export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptions): HTMLElement {
   const card = document.createElement('section');
-  card.className = 'trip-card';
+  card.className = `trip-card${opts.editing ? ' editing' : ''}`;
+
+  if (opts.editing) {
+    const h = document.createElement('h2');
+    h.textContent = HEADER.editTrip;
+    card.appendChild(h);
+    card.appendChild(renderForm(input, opts.onChange));
+    const done = iconButton(ICONS.check, HEADER.doneEditing, 'primary');
+    done.addEventListener('click', () => opts.onEditToggle(false));
+    const row = document.createElement('div');
+    row.className = 'actions';
+    row.appendChild(done);
+    card.appendChild(row);
+    return card;
+  }
 
   const route = document.createElement('h2');
-  route.textContent = SUMMARY.route(zoneCity(input.homeZone), zoneCity(input.destZone));
+  routeTitle(input, route);
   card.appendChild(route);
+  if (input.homeAirport && input.destAirport) {
+    const codes = document.createElement('p');
+    codes.className = 'codes';
+    codes.textContent = `${input.homeAirport} to ${input.destAirport}`;
+    card.appendChild(codes);
+  }
 
   const facts = document.createElement('ul');
   facts.className = 'facts';
@@ -77,17 +109,10 @@ export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptio
       link.classList.remove('done');
     }, 1500);
   });
-  const edit = iconButton(
-    opts.editing ? ICONS.check : ICONS.edit,
-    opts.editing ? HEADER.doneEditing : HEADER.editTrip,
-    'edit-toggle',
-  );
-  edit.setAttribute('aria-expanded', String(opts.editing));
-  edit.addEventListener('click', () => opts.onEditToggle(!opts.editing));
+  const edit = iconButton(ICONS.edit, HEADER.editTrip, 'edit-toggle');
+  edit.addEventListener('click', () => opts.onEditToggle(true));
   actions.append(ics, link, edit);
   card.appendChild(actions);
-
-  if (opts.editing) card.appendChild(renderForm(input, opts.onChange));
 
   const foot = document.createElement('p');
   foot.className = 'footer';

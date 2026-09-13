@@ -59,6 +59,7 @@ html {
 
 body {
   margin: 0;
+  overflow-x: clip;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
@@ -290,9 +291,23 @@ h3 {
   stroke-dasharray: 4 5;
 }
 
+.look-caffeine .dot {
+  fill: var(--caffeine);
+  stroke: var(--caffeine);
+}
+
+.look-caffeine {
+  color: var(--caffeine-ink);
+}
+
+.look-noCaffeine .dot,
 .look-caffeineDose .dot {
   fill: var(--bg);
   stroke: var(--caffeine);
+}
+
+.look-noCaffeine {
+  color: var(--caffeine);
 }
 
 .look-caffeineDose {
@@ -310,26 +325,38 @@ h3 {
 
 .seg-title,
 .side-title {
-  font-size: 12.5px;
+  font-size: var(--feed-font, 13.5px);
   fill: var(--ink);
 }
 
 .side-title {
-  font-size: 11.5px;
+  font-size: calc(var(--feed-font, 13.5px) - 1px);
   fill: var(--muted);
 }
 
 .seg-meta,
 .side-meta {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--feed-meta, 11px);
   fill: var(--muted);
 }
 
 .seg-until {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--feed-meta, 11px);
   fill: var(--now);
+}
+
+.day-label {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  fill: var(--ink);
+}
+
+.hour-line.day-line {
+  stroke: var(--ink);
+  stroke-width: 1;
 }
 
 .item .opt {
@@ -345,24 +372,8 @@ h3 {
 .day-head {
   position: absolute;
   left: 0;
-  right: 0;
-  z-index: 2;
-  transform: translateY(-50%);
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 4px 8px;
-  background: var(--bg);
-  border-top: 1px solid var(--ink);
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.day-head .zone {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  font-weight: 400;
-  color: var(--muted);
+  width: 0;
+  height: 0;
 }
 
 .now-line {
@@ -390,14 +401,15 @@ h3 {
 /* Sheets, mobile only */
 
 dialog.sheet {
-  width: min(560px, 100vw - 24px);
-  max-height: 86vh;
-  margin: auto auto 0;
+  width: min(560px, calc(100% - 24px));
+  max-height: 90vh;
+  margin: auto;
   border: 0;
-  border-radius: 14px 14px 0 0;
-  padding: 12px 18px 24px;
+  border-radius: 14px;
+  padding: 12px 18px 20px;
   background: var(--bg);
   color: var(--ink);
+  box-sizing: border-box;
 }
 
 dialog.sheet::backdrop {
@@ -433,12 +445,18 @@ dialog.sheet::backdrop {
 
 .day-list li {
   display: grid;
-  grid-template-columns: 7.5em 1fr auto;
+  grid-template-columns: 8em 1fr;
   align-items: center;
   gap: 10px;
   padding: 7px 2px;
   border-bottom: 1px solid var(--rule);
   cursor: pointer;
+}
+
+.day-list .no-night {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--muted);
 }
 
 .day-list li.today .date {
@@ -470,7 +488,7 @@ dialog.sheet::backdrop {
   height: 14px;
 }
 
-.day-list .travel {
+.day-list .flight {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -479,9 +497,9 @@ dialog.sheet::backdrop {
   color: var(--muted);
 }
 
-.day-list .travel .icon {
-  width: 13px;
-  height: 13px;
+.day-list .flight .icon {
+  width: 12px;
+  height: 12px;
 }
 
 /* Desktop layouts. Two columns with tabs from 900 px, three from 1200 px. */
@@ -494,13 +512,13 @@ dialog.sheet::backdrop {
 }
 
 .layout.two {
-  grid-template-columns: 340px minmax(0, 720px);
-  max-width: 1140px;
+  grid-template-columns: 380px minmax(0, 820px);
+  max-width: 1280px;
 }
 
 .layout.three {
-  grid-template-columns: 300px minmax(0, 640px) 320px;
-  justify-content: center;
+  grid-template-columns: 320px minmax(0, 1fr) 360px;
+  max-width: 1500px;
 }
 
 .panel {
@@ -542,11 +560,28 @@ dialog.sheet::backdrop {
   position: sticky;
   top: 0;
   z-index: 4;
+  padding: 6px 0 0;
+  background: var(--bg);
+}
+
+.toolbar .controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0 10px;
-  background: var(--bg);
+}
+
+.zone-tags {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 8px 2px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.mobile .zone-tags {
+  padding: 0 8px 4px;
 }
 
 .tabs {
@@ -664,9 +699,32 @@ dialog.sheet::backdrop {
 /* Trip card */
 
 .trip-card h2 {
-  margin: 12px 0 8px;
+  margin: 12px 0 2px;
   font-size: 1.15rem;
   font-weight: 500;
+}
+
+.trip-card .codes {
+  margin: 0 0 10px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.trip-card.editing .actions {
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.icon-button.primary {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+.icon-button.primary .icon {
+  color: var(--bg);
 }
 
 .mobile .trip-card h2 {
@@ -747,9 +805,77 @@ dialog.sheet::backdrop {
 
 .trip-form .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 12px;
   margin: 10px 0;
+}
+
+.trip-form .wide-field {
+  grid-column: 1 / -1;
+}
+
+.trip-form input[type='datetime-local'] {
+  min-width: 0;
+  width: 100%;
+}
+
+.airport-picker {
+  position: relative;
+}
+
+.airport-picker input {
+  width: 100%;
+}
+
+.airport-options {
+  position: fixed;
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+  max-height: 260px;
+  overflow-y: auto;
+  min-width: 260px;
+}
+
+.airport-options li {
+  display: grid;
+  grid-template-columns: 3em 1fr;
+  gap: 0 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.airport-options li[aria-selected='true'],
+.airport-options li:hover {
+  background: var(--bg);
+}
+
+.airport-options .code {
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+.airport-options .name {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.airport-options .empty {
+  display: block;
+  color: var(--muted);
+  cursor: default;
 }
 
 .trip-form label {

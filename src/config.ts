@@ -69,6 +69,8 @@ export const MIN_DARK_FRAGMENT_MINUTES = 20;
 export const DEFAULT_INPUT = {
   homeZone: 'Europe/London',
   destZone: 'America/Los_Angeles',
+  homeAirport: 'LHR',
+  destAirport: 'SFO',
   habitualBed: '23:00',
   habitualWake: '07:00',
   flight: { depart: '2026-09-16T10:35', arrive: '2026-09-16T13:35' },

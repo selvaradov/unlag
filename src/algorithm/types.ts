@@ -4,6 +4,9 @@ export type CaffeineHabit = 'none' | 'regular' | 'off';
 export interface PlanInput {
   homeZone: string;
   destZone: string;
+  // IATA codes when the zones came from airports; used for names only.
+  homeAirport?: string;
+  destAirport?: string;
   // Clock times as HH:MM in the home zone.
   habitualBed: string;
   habitualWake: string;

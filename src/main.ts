@@ -10,13 +10,14 @@ import {
   DEFAULT_PX_PER_HOUR,
   MAX_PX_PER_HOUR,
   MIN_PX_PER_HOUR,
+  NARROW,
   axisStart,
   renderFeed,
   timeAt,
   yOf,
   type FeedItem,
 } from './ui/feed.ts';
-import { dayLabel, zoneAt } from './ui/format.ts';
+import { dayLabel, zoneAbbr, zoneAt } from './ui/format.ts';
 import { renderHeadline } from './ui/headline.ts';
 import { ICONS } from './ui/icons.ts';
 import { readInput, writeInput } from './ui/state.ts';
@@ -234,10 +235,35 @@ function zoomGroup(): HTMLElement {
   return wrap;
 }
 
+// The zone in effect at the focus line on the left, the other zone on the right.
+function zoneTags(): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'zone-tags';
+  row.innerHTML = '<span class="zone-left"></span><span class="zone-right"></span>';
+  return row;
+}
+
+function updateZoneTags(): void {
+  const t = timeAtFocus();
+  const zone = zoneAt(plan, t);
+  const other = zone === plan.input.homeZone ? plan.input.destZone : plan.input.homeZone;
+  const left = document.querySelector('.zone-left');
+  const right = document.querySelector<HTMLElement>('.zone-right');
+  if (left) left.textContent = zoneAbbr(plan, t, zone);
+  if (right) {
+    right.textContent = zoneAbbr(plan, t, other);
+    const host = document.querySelector<HTMLElement>('.feed-host');
+    right.hidden = !!host && host.clientWidth < NARROW;
+  }
+}
+
 function toolbar(): HTMLElement {
   const bar = document.createElement('div');
   bar.className = 'toolbar';
-  bar.append(nowButton(), zoomGroup());
+  const controls = document.createElement('div');
+  controls.className = 'controls';
+  controls.append(nowButton(), zoomGroup());
+  bar.append(controls, zoneTags());
   return bar;
 }
 
@@ -353,7 +379,7 @@ function render(): void {
     header.append(brand(), dayButton, tripButton);
     const sticky = document.createElement('div');
     sticky.className = 'sticky';
-    sticky.append(header, renderHeadline(plan, now, selected));
+    sticky.append(header, renderHeadline(plan, now, selected), zoneTags());
     app.appendChild(sticky);
     const host = document.createElement('main');
     host.className = 'feed-host';
@@ -375,12 +401,13 @@ function render(): void {
     app.append(daySheet, tripSheet);
     dayButton.addEventListener('click', () => daySheet.showModal());
     tripButton.addEventListener('click', () => tripSheet.showModal());
-    requestAnimationFrame(() => {
-      const name = document.querySelector('.day-name');
-      if (name) name.textContent = currentDayLabel();
-    });
   }
   window.scrollTo({ top: scrollY, behavior: 'instant' });
+  requestAnimationFrame(() => {
+    const name = document.querySelector('.day-name');
+    if (name) name.textContent = currentDayLabel();
+    updateZoneTags();
+  });
 }
 
 render();
@@ -405,6 +432,7 @@ window.addEventListener('scroll', () => {
   requestAnimationFrame(() => {
     const name = document.querySelector('.day-name');
     if (name) name.textContent = currentDayLabel();
+    updateZoneTags();
     ticking = false;
   });
 });

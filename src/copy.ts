@@ -68,8 +68,9 @@ export function eventInstruction(e: PlanEvent, ctx: EventContext): string {
 }
 
 export const FORM = {
-  homeZone: 'Home time zone',
-  destZone: 'Destination time zone',
+  homeAirport: 'From',
+  destAirport: 'To',
+  airportPlaceholder: 'Airport code or city',
   depart: 'Departure, local time',
   arrive: 'Arrival, local time',
   bed: 'Usual bedtime',
@@ -123,15 +124,15 @@ export const FEED = {
   noCaffeineTitle: 'no more caffeine',
   noCaffeineDetail: "Anything now would cut into tonight's sleep.",
   caffeineFine: 'caffeine is fine',
-  otherZone: (zone: string) => `${zone} on the right`,
   landed: (t: string) => `landed ${t}`,
   clocksChange: (hours: number, direction: Direction) =>
     `clocks ${direction === 'delay' ? 'back' : 'forward'} ${hours} h`,
 };
 
 export const DAYLIST = {
-  noSleep: 'no full night',
-  travel: 'flight',
+  noSleep: 'no night',
+  depart: 'depart',
+  arrive: 'arrive',
 };
 
 export const HEADER = {
@@ -164,3 +165,7 @@ export function zoneCity(zone: string): string {
   const last = zone.split('/').pop() ?? zone;
   return last.replace(/_/g, ' ');
 }
+
+export const PICKER = {
+  noMatch: 'No large airport matches. Try the code, such as SFO.',
+};

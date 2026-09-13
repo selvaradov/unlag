@@ -1,17 +1,12 @@
 import type { CaffeineHabit, PlanInput } from '../algorithm/types.ts';
 import { FORM } from '../copy.ts';
+import type { Airport } from '../data/airports.ts';
+import { renderAirportPicker } from './airportPicker.ts';
 import { ICONS, type IconName } from './icons.ts';
 
-function zoneOptions(): string[] {
-  try {
-    return Intl.supportedValuesOf('timeZone');
-  } catch {
-    return ['Europe/London', 'America/Los_Angeles', 'America/New_York', 'Asia/Tokyo', 'Australia/Sydney'];
-  }
-}
-
-function field(label: string, iconName: IconName, control: HTMLElement): HTMLLabelElement {
+function field(label: string, iconName: IconName, control: HTMLElement, cls = ''): HTMLLabelElement {
   const l = document.createElement('label');
+  if (cls) l.className = cls;
   const span = document.createElement('span');
   span.className = 'field-label';
   span.innerHTML = `${ICONS[iconName]}${label}`;
@@ -31,17 +26,31 @@ export function renderForm(input: PlanInput, onChange: (next: PlanInput) => void
   form.className = 'trip-form';
   form.addEventListener('submit', (ev) => ev.preventDefault());
 
-  const list = document.createElement('datalist');
-  list.id = 'zones';
-  for (const z of zoneOptions()) {
-    const o = document.createElement('option');
-    o.value = z;
-    list.appendChild(o);
-  }
-  form.appendChild(list);
-
-  const homeZone = text(input.homeZone, { list: 'zones', autocomplete: 'off', id: 'f-home' });
-  const destZone = text(input.destZone, { list: 'zones', autocomplete: 'off', id: 'f-dest' });
+  // Airports picked here; the zones they carry feed the plan.
+  let home: Airport | null = null;
+  let dest: Airport | null = null;
+  const emit = () => {
+    const next = read();
+    if (next) onChange(next);
+  };
+  const homePicker = renderAirportPicker({
+    id: 'f-home',
+    initialText: input.homeAirport ?? '',
+    placeholder: FORM.airportPlaceholder,
+    onPick: (a) => {
+      home = a;
+      emit();
+    },
+  });
+  const destPicker = renderAirportPicker({
+    id: 'f-dest',
+    initialText: input.destAirport ?? '',
+    placeholder: FORM.airportPlaceholder,
+    onPick: (a) => {
+      dest = a;
+      emit();
+    },
+  });
   const depart = text(input.flight.depart, { type: 'datetime-local', id: 'f-depart' });
   const arrive = text(input.flight.arrive, { type: 'datetime-local', id: 'f-arrive' });
   const bed = text(input.habitualBed, { type: 'time', id: 'f-bed' });
@@ -66,10 +75,10 @@ export function renderForm(input: PlanInput, onChange: (next: PlanInput) => void
   const grid = document.createElement('div');
   grid.className = 'grid';
   grid.append(
-    field(FORM.homeZone, 'globe', homeZone),
-    field(FORM.destZone, 'globe', destZone),
-    field(FORM.depart, 'plane', depart),
-    field(FORM.arrive, 'landing', arrive),
+    field(FORM.homeAirport, 'plane', homePicker),
+    field(FORM.destAirport, 'plane', destPicker),
+    field(FORM.depart, 'clock', depart, 'wide-field'),
+    field(FORM.arrive, 'clock', arrive, 'wide-field'),
     field(FORM.bed, 'bed', bed),
     field(FORM.wake, 'clock', wake),
     field(FORM.travelWake, 'clock', travelWake),
@@ -88,13 +97,13 @@ export function renderForm(input: PlanInput, onChange: (next: PlanInput) => void
   checks.append(melLabel, boxLabel);
   form.append(grid, checks);
 
-  const zones = new Set(zoneOptions());
   const read = (): PlanInput | null => {
-    if (!zones.has(homeZone.value) || !zones.has(destZone.value)) return null;
     if (!depart.value || !arrive.value || !bed.value || !wake.value) return null;
     return {
-      homeZone: homeZone.value,
-      destZone: destZone.value,
+      homeZone: home?.tz ?? input.homeZone,
+      destZone: dest?.tz ?? input.destZone,
+      homeAirport: home?.code ?? input.homeAirport,
+      destAirport: dest?.code ?? input.destAirport,
       habitualBed: bed.value,
       habitualWake: wake.value,
       flight: { depart: depart.value, arrive: arrive.value },
@@ -106,9 +115,9 @@ export function renderForm(input: PlanInput, onChange: (next: PlanInput) => void
       lightBox: lightBox.checked,
     };
   };
-  form.addEventListener('change', () => {
-    const next = read();
-    if (next) onChange(next);
+  form.addEventListener('change', (ev) => {
+    if ((ev.target as HTMLElement).closest('.airport-picker')) return;
+    emit();
   });
   return form;
 }
