@@ -77,8 +77,9 @@ export function renderDayList(plan: Plan, now: number, onPick: (iso: string) => 
     const li = document.createElement('li');
     li.dataset.day = row.iso;
     if (row.today) li.classList.add('today');
+    // The take off or landing icon says which; the word would not fit beside the zone.
     const flight = row.flight
-      ? ` · ${ICONS.plane}${row.flight.kind === 'depart' ? DAYLIST.depart : DAYLIST.arrive} ${row.flight.time}`
+      ? ` · <span title="${row.flight.kind === 'depart' ? DAYLIST.depart : DAYLIST.arrive}">${row.flight.kind === 'depart' ? ICONS.planeTakeoff : ICONS.planeLanding}${row.flight.time}</span>`
       : '';
     const night = row.strip
       ? `<span class="night"><span class="strip" title="${DAYLIST.stripTitle}"><span class="bar" style="left:${(row.strip.left * 100).toFixed(1)}%;width:${(row.strip.width * 100).toFixed(1)}%"></span></span><span class="times">${row.sleep}</span></span>`
