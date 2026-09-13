@@ -175,7 +175,7 @@ export const HEADER = {
 };
 
 export const DAY_AXIS = {
-  caption: 'Local time, noon to noon',
+  caption: 'Local time',
   ticks: ['12:00', '18:00', '00:00', '06:00', '12:00'],
 };
 

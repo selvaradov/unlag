@@ -514,7 +514,7 @@ dialog.sheet::backdrop {
 
 .day-list li {
   display: grid;
-  grid-template-columns: 7.5em 1fr;
+  grid-template-columns: 7.5rem 1fr;
   align-items: center;
   gap: 10px;
   padding: 8px 6px 8px 12px;
@@ -548,8 +548,9 @@ dialog.sheet::backdrop {
 
 .day-axis {
   display: grid;
-  grid-template-columns: 7.5em 1fr;
+  grid-template-columns: 7.5rem 1fr;
   gap: 10px;
+  align-items: end;
   padding: 0 6px 4px 12px;
   font-family: var(--mono);
   font-size: 0.66rem;
@@ -559,6 +560,7 @@ dialog.sheet::backdrop {
 .day-axis .caption {
   font-family: var(--sans);
   font-size: 0.72rem;
+  white-space: nowrap;
 }
 
 .day-axis .ticks {
@@ -571,6 +573,15 @@ dialog.sheet::backdrop {
   display: flex;
   justify-content: center;
   white-space: nowrap;
+}
+
+/* The end labels hug the strip edges so nothing hangs outside the panel. */
+.day-axis .ticks span:first-child {
+  justify-content: flex-start;
+}
+
+.day-axis .ticks span:last-child {
+  justify-content: flex-end;
 }
 
 .day-list .strip {
@@ -609,6 +620,36 @@ dialog.sheet::backdrop {
   top: 0;
   bottom: 0;
   border-radius: 2px;
+}
+
+.day-list .strip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  --tick: color-mix(in srgb, var(--bg) 65%, transparent);
+  background:
+    linear-gradient(
+      to right,
+      transparent calc(25% - 0.5px),
+      var(--tick) calc(25% - 0.5px),
+      var(--tick) calc(25% + 0.5px),
+      transparent calc(25% + 0.5px)
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(50% - 0.5px),
+      var(--tick) calc(50% - 0.5px),
+      var(--tick) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(75% - 0.5px),
+      var(--tick) calc(75% - 0.5px),
+      var(--tick) calc(75% + 0.5px),
+      transparent calc(75% + 0.5px)
+    );
 }
 
 .day-list .bar.look-sleep {
