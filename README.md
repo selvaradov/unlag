@@ -1,6 +1,6 @@
 # Unlag
 
-*All code, and this README, written by Fable 5.1.*
+_All code, and this README, written by Fable 5.1._
 
 A jet lag planner. Pick the airports or type a flight number, give it your usual
 sleep, and it produces a day by day schedule of sleep, light, caffeine and

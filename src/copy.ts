@@ -98,7 +98,8 @@ export const DOWNLOAD_ICS = 'Calendar file';
 export const COPY_LINK = 'Copy link';
 export const LINK_COPIED = 'Copied';
 
-export const FOOTER = `Rules from Burgess, Using bright light and melatonin to reduce jet lag, and the light and melatonin phase response curves. Not medical advice. Build ${__BUILD__}.`;
+export const SOURCE_URL = 'https://github.com/selvaradov/unlag';
+export const FOOTER = `Rules from Burgess, Using bright light and melatonin to reduce jet lag, and the light and melatonin phase response curves. Not medical advice. <a href="${SOURCE_URL}">Source</a>.`;
 
 export const HEADLINE = {
   nowSleep: (until: string) => `sleep until ${until}`,
