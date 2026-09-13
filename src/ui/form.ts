@@ -25,12 +25,8 @@ function text(value: string, attrs: Record<string, string> = {}): HTMLInputEleme
 }
 
 export function renderForm(input: PlanInput, onChange: (next: PlanInput) => void): HTMLElement {
-  const details = document.createElement('details');
-  details.className = 'trip-form';
-  const summary = document.createElement('summary');
-  summary.textContent = FORM.title;
-  details.appendChild(summary);
   const form = document.createElement('form');
+  form.className = 'trip-form';
   form.addEventListener('submit', (ev) => ev.preventDefault());
 
   const list = document.createElement('datalist');
@@ -86,7 +82,6 @@ export function renderForm(input: PlanInput, onChange: (next: PlanInput) => void
   boxLabel.append(lightBox, document.createTextNode(FORM.lightBox));
   checks.append(melLabel, boxLabel);
   form.append(grid, checks);
-  details.appendChild(form);
 
   const zones = new Set(zoneOptions());
   const read = (): PlanInput | null => {
@@ -110,5 +105,5 @@ export function renderForm(input: PlanInput, onChange: (next: PlanInput) => void
     const next = read();
     if (next) onChange(next);
   });
-  return details;
+  return form;
 }

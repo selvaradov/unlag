@@ -7,9 +7,9 @@ export const TAGLINE = 'A jet lag schedule from your flight and your sleep.';
 export const KIND_LABEL: Record<EventKind, string> = {
   sleep: 'Sleep',
   nap: 'Nap',
-  light: 'Bright light',
+  light: 'Get bright light',
   dark: 'Avoid bright light',
-  caffeine: 'Caffeine OK',
+  caffeine: 'Caffeine is fine',
   caffeineDose: 'Caffeine',
   melatonin: 'Melatonin',
   flight: 'Flight',
@@ -28,7 +28,7 @@ export function eventTitle(e: PlanEvent): string {
     case 'sleep':
       return e.note === 'onBoard' ? 'Sleep on the plane' : 'Sleep';
     case 'nap':
-      return 'Nap, up to 90 min';
+      return 'Nap if you can, up to 90 min';
     case 'caffeineDose':
       return `Caffeine, ${e.note}`;
     case 'melatonin':
@@ -67,12 +67,6 @@ export function eventInstruction(e: PlanEvent, ctx: EventContext): string {
   }
 }
 
-export const NOW_LABEL = 'Now';
-export const NEXT_LABEL = 'Next';
-export const NOTHING_NOW = 'Nothing to do right now.';
-export const PLAN_OVER = 'The plan is over. You should be adapted.';
-export const PLAN_NOT_STARTED = 'The plan has not started yet.';
-
 export function summary(fromZone: string, toZone: string, direction: Direction, hours: number): string {
   const verb = direction === 'delay' ? 'later' : 'earlier';
   return `${fromZone.replace(/_/g, ' ')} to ${toZone.replace(/_/g, ' ')}. Your clock needs to move ${hours} h ${verb}.`;
@@ -82,10 +76,7 @@ export function adaptedLine(date: string | null): string {
   return date ? `Predicted adapted by ${date}.` : 'Not fully adapted within the days shown.';
 }
 
-export const TMIN_LEGEND = 'Tmin, the low point of your body clock';
-
 export const FORM = {
-  title: 'Trip',
   homeZone: 'Home time zone',
   destZone: 'Destination time zone',
   depart: 'Departure, local time',
@@ -105,15 +96,47 @@ export const DOWNLOAD_ICS = 'Download calendar (.ics)';
 export const COPY_LINK = 'Copy link to this plan';
 export const LINK_COPIED = 'Link copied';
 
-export const LEGEND: { kind: EventKind; label: string }[] = [
-  { kind: 'sleep', label: 'Sleep' },
-  { kind: 'nap', label: 'Nap' },
-  { kind: 'flight', label: 'Flight' },
-  { kind: 'light', label: 'Seek light' },
-  { kind: 'dark', label: 'Avoid light' },
-  { kind: 'caffeine', label: 'Caffeine OK' },
-  { kind: 'melatonin', label: 'Melatonin' },
-];
-
 export const FOOTER =
   'Rules from Burgess, Using bright light and melatonin to reduce jet lag, and the light and melatonin phase response curves. Not medical advice.';
+
+export const HEADLINE = {
+  sleep: 'sleep',
+  sleepOnBoard: 'sleep on the plane',
+  nap: 'nap if you can',
+  dark: 'avoid bright light',
+  light: 'see bright light',
+  caffeine: 'caffeine is fine',
+  melatonin: 'take melatonin',
+  caffeineDose: 'take caffeine',
+  landingSoon: 'get ready to land',
+  joiner: ' and ',
+  notStarted: 'Your plan has not started yet',
+  startsOn: (day: string) => `It starts on ${day}.`,
+  over: 'Your plan is over. You should be adapted.',
+  nothing: 'Nothing to do right now',
+  freeUntil: (t: string) => `Nothing to do until ${t}`,
+  caffeineAside: (t: string) => `Caffeine is fine until ${t}.`,
+  next: (what: string, when: string, inHow: string) => `Next, ${what.toLowerCase()} at ${when}, in ${inHow}.`,
+  optional: 'optional',
+};
+
+export const FEED = {
+  until: (t: string) => `Until ${t}`,
+  flightRail: 'Flight',
+  noCaffeineTitle: 'No more caffeine today',
+  noCaffeineDetail: "Anything now would cut into tonight's sleep.",
+  landed: (t: string, zone: string, hours: number, direction: Direction) =>
+    `Landed ${t} ${zone}. Clocks ${direction === 'delay' ? 'go back' : 'go forward'} ${hours} h. Times below are local.`,
+};
+
+export const DAYLIST = {
+  noSleep: 'no full night',
+  travel: 'flight',
+};
+
+export const HEADER = {
+  trip: 'Trip',
+  close: 'Close',
+  jumpToNow: 'Now',
+  pickDay: 'Choose a day',
+};

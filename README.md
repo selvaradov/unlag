@@ -62,7 +62,7 @@ caches the app so it works offline after the first load.
 ## Layout
 
 - `src/algorithm/` pure plan generation in UTC
-- `src/ui/` header, timeline, text list, form, URL state, calendar export
+- `src/ui/` feed, headline, day list, form, URL state, calendar export
 - `src/config.ts`, `src/copy.ts` constants and copy
 - `tests/` unit and rendering tests
 - `scripts/print-plan.ts` command line plan printer
