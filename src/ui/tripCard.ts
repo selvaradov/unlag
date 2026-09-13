@@ -4,6 +4,7 @@ import type { Plan, PlanInput } from '../algorithm/types.ts';
 import { COPY_LINK, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, SUMMARY, zoneCity } from '../copy.ts';
 import { airportsNow, findAirport } from '../data/airports.ts';
 import { renderForm } from './form.ts';
+import { renderNotify } from './notify.ts';
 import { clock, dayLabel, duration, shortDay, zoneAbbr } from './format.ts';
 import { ICONS } from './icons.ts';
 import { toICS } from './ics.ts';
@@ -124,6 +125,7 @@ export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptio
   edit.addEventListener('click', () => opts.onEdit());
   actions.append(ics, link, edit);
   card.appendChild(actions);
+  card.appendChild(renderNotify(writeInput(input)));
   card.appendChild(renderHowLede());
   return card;
 }

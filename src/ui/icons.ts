@@ -1,5 +1,6 @@
 // Icons from Lucide (https://lucide.dev, ISC licence), imported from the package as SVG text.
 import bedDouble from 'lucide-static/icons/bed-double.svg?raw';
+import bell from 'lucide-static/icons/bell.svg?raw';
 import calendar from 'lucide-static/icons/calendar.svg?raw';
 import check from 'lucide-static/icons/check.svg?raw';
 import chevronDown from 'lucide-static/icons/chevron-down.svg?raw';
@@ -42,6 +43,7 @@ export const ICONS = {
   cup: prepare(coffee),
   noCup: prepare(coffee, '', true),
   bed: prepare(bedDouble),
+  bell: prepare(bell),
   moon: prepare(moon),
   plane: prepare(plane),
   planeTakeoff: prepare(planeTakeoff),

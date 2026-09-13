@@ -254,6 +254,22 @@ export const WALK = {
   example: 'Or see an example plan',
 };
 
+export const NOTIFY = {
+  off: 'Notify me',
+  on: 'Notifications on',
+  offHint: 'A notification on this device as each instruction starts.',
+  onHint: 'This device will be told as each instruction starts. Tap to turn off.',
+  justOn: 'Done. The first notification comes with the next instruction.',
+  checking: 'Checking…',
+  unsupported: 'This browser cannot show push notifications. The calendar file gives the same alerts.',
+  install: 'On iPhone and iPad, add Unlag to the home screen first, then turn notifications on from there.',
+  errors: {
+    denied: 'Notifications are blocked for this site. Allow them in the browser settings and try again.',
+    unavailable: 'Notifications are not set up on this site yet.',
+    failed: 'Could not turn notifications on. Try again in a moment.',
+  } as Record<string, string>,
+};
+
 export const PICKER = {
   noMatch: 'No airport matches. Try the code, such as SFO.',
 };

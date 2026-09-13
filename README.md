@@ -65,6 +65,20 @@ served, identical queries are cached at the CDN for a day, and counters in
 Netlify Blobs cap lookups per client per hour (`LOOKUP_HOURLY_CAP`, default 12) and per month (`LOOKUP_MONTHLY_CAP`, default 300). Without the key the
 function answers 503 and the form says lookup is not set up.
 
+## Notifications
+
+"Notify me" on the trip card subscribes the device to Web Push for that plan.
+The subscription and the plan's query string go to Netlify Blobs through
+`netlify/functions/push-subscribe.mts`. A scheduled function,
+`netlify/functions/push-tick.mts`, runs every five minutes, regenerates each
+stored plan and pushes whatever instruction starts in the window since its
+last run, using the `web-push` library and VAPID keys held in the environment
+(`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`). Subscriptions the
+push service reports gone, or whose plan ended more than a week ago, are
+removed. The service worker in `src/sw.ts` shows the notification and opens
+the plan when it is tapped. On iPhone and iPad the site has to be added to the
+home screen first. The calendar file remains the no server alternative.
+
 ## Development
 
 ```
