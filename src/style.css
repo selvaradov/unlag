@@ -112,18 +112,15 @@ button {
   color: var(--muted);
 }
 
-.icon-button {
+.trip-button {
   justify-self: end;
   background: none;
-  border: 0;
-  padding: 6px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 4px 12px;
   cursor: pointer;
   color: var(--muted);
-}
-
-.icon-button .icon {
-  width: 24px;
-  height: 24px;
+  font-size: 0.85rem;
 }
 
 /* Headline */
@@ -197,12 +194,16 @@ button {
 
 .day-head {
   position: absolute;
-  left: var(--left);
-  right: var(--right);
-  transform: translateY(-100%);
+  left: 0;
+  right: 0;
+  z-index: 2;
+  transform: translateY(-50%);
   display: flex;
   justify-content: space-between;
-  padding: 0 6px 3px;
+  padding: 4px 8px;
+  background: var(--bg);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
   font-size: 0.8rem;
   font-weight: 600;
 }

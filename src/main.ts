@@ -160,9 +160,8 @@ function render(): void {
   dayButton.innerHTML = `<span class="day-name">${currentDayLabel() || dayLabel(plan, plan.planStart)}</span>${ICONS.chevron}`;
   const tripButton = document.createElement('button');
   tripButton.type = 'button';
-  tripButton.className = 'icon-button';
-  tripButton.title = HEADER.trip;
-  tripButton.innerHTML = ICONS.plane;
+  tripButton.className = 'trip-button';
+  tripButton.textContent = HEADER.trip;
   header.append(brand, dayButton, tripButton);
   const sticky = document.createElement('div');
   sticky.className = 'sticky';

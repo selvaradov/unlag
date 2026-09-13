@@ -24,6 +24,9 @@ describe('feed', () => {
   });
 
   it('draws a pill per item, a day header per day and the landing divider', () => {
+    // Day headers sit above pills so a capsule never covers the date.
+    const feed = renderFeed(plan, plan.depart, noop);
+    expect(feed.querySelector('.day-head')).not.toBeNull();
     const el = renderFeed(plan, plan.depart, noop);
     expect(el.querySelectorAll('.pill').length).toBe(feedItems(plan).length);
     expect(el.querySelectorAll('.day-head').length).toBeGreaterThanOrEqual(8);

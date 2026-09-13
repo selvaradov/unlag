@@ -134,16 +134,17 @@ export function renderFeed(plan: Plan, now: number, handlers: FeedHandlers): HTM
   // Hour grid, labels on both sides, day headers and the landing divider.
   for (const m of hourMarks(plan)) {
     const y = yOf(plan, m.t);
-    const line = el('div', `hour-line${m.dayStart ? ' day-line' : ''}`);
-    line.style.top = `${y}px`;
-    root.appendChild(line);
-    const left = el('span', 'hour-label left', m.label);
-    left.style.top = `${y}px`;
-    root.appendChild(left);
-    const right = el('span', 'hour-label right', m.other);
-    right.style.top = `${y}px`;
-    root.appendChild(right);
-    if (m.dayStart) {
+    if (!m.dayStart) {
+      const line = el('div', 'hour-line');
+      line.style.top = `${y}px`;
+      root.appendChild(line);
+      const left = el('span', 'hour-label left', m.label);
+      left.style.top = `${y}px`;
+      root.appendChild(left);
+      const right = el('span', 'hour-label right', m.other);
+      right.style.top = `${y}px`;
+      root.appendChild(right);
+    } else {
       const zone = zoneAt(plan, m.t);
       const head = el(
         'div',
