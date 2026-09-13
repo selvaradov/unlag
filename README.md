@@ -64,7 +64,7 @@ or the plus and minus buttons.
 ## Layout
 
 - `src/algorithm/` pure plan generation in UTC
-- `src/ui/` metro line feed, headline, day list, form, URL state, calendar export
+- `src/ui/` metro line feed, headline, day list, trip card, form, URL state, calendar export
 - `src/config.ts`, `src/copy.ts` constants and copy
 - `tests/` unit and rendering tests
 - `scripts/print-plan.ts` command line plan printer
