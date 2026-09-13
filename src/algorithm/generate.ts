@@ -142,7 +142,8 @@ interface LightWindows {
   achieved: number;
 }
 
-// Seek window is the nearest four waking hours to Tmin on the shifting side; avoid window is the other side.
+// Seek window is the nearest four waking hours to Tmin on the shifting side; avoid window is the other side,
+// reaching back through the evening for an advance.
 function lightWindows(
   direction: Direction,
   prev: number,
@@ -152,18 +153,19 @@ function lightWindows(
   input: PlanInput,
 ): LightWindows {
   const w = cfg.LIGHT_WINDOW_HOURS * HOUR;
+  const a = cfg.AVOID_WINDOW_HOURS[direction] * HOUR;
   let seek: Interval;
   let avoid: Interval;
   if (direction === 'delay') {
     const s = contains(sleeps, next);
     const end = s ? s.start : next;
     seek = { start: end - w, end };
-    avoid = { start: prev, end: prev + w };
+    avoid = { start: prev, end: prev + a };
   } else {
     const s = contains(sleeps, prev);
     const start = s ? s.end : prev;
     seek = { start, end: start + w };
-    avoid = { start: next - w, end: next };
+    avoid = { start: next - a, end: next };
   }
   const seekPieces = subtract(seek, sleeps);
   const avoidPieces = subtract(avoid, sleeps).filter((p) => p.end - p.start >= cfg.MIN_DARK_FRAGMENT_MINUTES * MINUTE);

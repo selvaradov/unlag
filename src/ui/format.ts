@@ -50,7 +50,8 @@ export function overlapsDaylight(plan: Plan, e: PlanEvent): boolean {
 }
 
 export function contextFor(plan: Plan, e: PlanEvent): EventContext {
-  return { direction: plan.direction, daylight: overlapsDaylight(plan, e), endClock: clock(plan, e.end) };
+  const endsAtBed = plan.events.some((s) => s.kind === 'sleep' && s.start === e.end);
+  return { direction: plan.direction, daylight: overlapsDaylight(plan, e), endClock: clock(plan, e.end), endsAtBed };
 }
 
 export function instruction(plan: Plan, e: PlanEvent): string {

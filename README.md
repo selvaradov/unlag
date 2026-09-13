@@ -23,8 +23,10 @@ Everything hangs off one point.
 - **Direction.** Flying west the clock must delay, flying east advance, unless
   the advance would exceed nine hours, when delaying is shorter.
 - **Light rules.** To delay, seek bright light in the four waking hours before
-  Tmin and avoid it in the four after; to advance, the mirror image. Sunglasses
-  and dim rooms count as avoiding. A seek window that falls in sleep is lost.
+  Tmin, right up to bed, and avoid it in the four after. To advance, seek light
+  in the four hours after Tmin and avoid it in the eight before, which keeps the
+  evening dim. Sunglasses and dim rooms count as avoiding. A seek window that
+  falls in sleep is lost.
 - **Rates.** Unmanaged after arrival the clock delays about 1.5 h a day and
   advances about 1 h; well timed light adds about half an hour. Before the
   flight there is no drift, so the shift comes only from moving bedtime and

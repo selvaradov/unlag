@@ -21,6 +21,8 @@ export interface EventContext {
   daylight: boolean;
   // Formatted local end time, for windows that need one in their text.
   endClock: string;
+  // True when the window runs straight into a scheduled sleep.
+  endsAtBed: boolean;
 }
 
 export function eventTitle(e: PlanEvent): string {
@@ -46,10 +48,14 @@ export function eventInstruction(e: PlanEvent, ctx: EventContext): string {
         : 'Dark room. Phone face down.';
     case 'nap':
       return 'Optional. Eye mask on, alarm set. Keeps the long day bearable without eating into tonight.';
-    case 'light':
-      return ctx.daylight
+    case 'light': {
+      const how = ctx.daylight
         ? 'Get outside without sunglasses if you can. Otherwise the brightest room available, lights on, screens bright.'
         : 'Brightest room you can find, overhead lights on, screens bright. Intermittent is fine.';
+      return ctx.direction === 'delay' && ctx.endsAtBed
+        ? `${how} Keep the lights up until bed (you're pushing bedtime later than usual, so sleep will still come).`
+        : how;
+    }
     case 'dark':
       return ctx.direction === 'delay'
         ? 'Sunglasses outdoors, dim indoors, screens low. Light now would push your clock earlier, the wrong way.'
@@ -212,7 +218,7 @@ export const METHOD: { title: string; text: string }[] = [
   },
   {
     title: 'Light moves the clock',
-    text: 'Bright light in the hours before Tmin pushes the clock later. Light in the hours after Tmin pushes it earlier. Flying west you need later, so you seek light in the evening and wear sunglasses in the early morning. Flying east it is the reverse. Light eight or more hours from Tmin does little either way.',
+    text: 'Bright light in the hours before Tmin pushes the clock later. Light in the hours after Tmin pushes it earlier. Flying west you need later, so you seek light in the evening, right up to bed, and wear sunglasses in the early morning. The light runs to bedtime on purpose. The hours nearest Tmin move the clock most, and a body being kept up late has no trouble falling asleep. Flying east it is the reverse, and the lights stay low through the evening as well, because light in the hours before bed would push the clock the wrong way. Light eight or more hours from Tmin does little either way.',
   },
   {
     title: 'It moves a bit each day',
@@ -361,7 +367,7 @@ while remaining > 0 and within the plan:
       code: `delay:   seek  = the 4 waking hours before next Tmin
          avoid = [prev Tmin, prev Tmin + 4h]
 advance: seek  = the 4 waking hours after prev Tmin
-         avoid = [next Tmin - 4h, next Tmin]
+         avoid = [next Tmin - 8h, next Tmin]
 seek pieces outside sleep are kept; avoid pieces shorter than 45 min are dropped
 achieved = Σ over seek pieces of (length / 4h) × quality
 quality  = 1.0 in daylight hours (07:00 to 19:00 local) or with a light box

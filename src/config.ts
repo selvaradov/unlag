@@ -3,8 +3,12 @@
 // Core body temperature minimum, hours before habitual wake time.
 export const TMIN_HOURS_BEFORE_WAKE = 3;
 
-// Width of the seek-light and avoid-light windows around Tmin.
+// Width of the seek-light window next to Tmin.
 export const LIGHT_WINDOW_HOURS = 4;
+
+// Width of the avoid-light window on the far side of Tmin. For an advance it reaches back through the
+// evening, since light in the hours before bed would delay the clock.
+export const AVOID_WINDOW_HOURS = { delay: 4, advance: 8 };
 
 // Delay instead of advance when the advance would exceed this many hours.
 export const MAX_ADVANCE_HOURS = 9;

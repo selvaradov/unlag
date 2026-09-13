@@ -196,4 +196,14 @@ describe('eastward overnight flight', () => {
     expect(mel.length).toBeGreaterThan(0);
     expect(mel.every((m) => !m.optional)).toBe(true);
   });
+
+  it('keeps the lights low through the evening before each preflight bedtime', () => {
+    const preflightBeds = plan.events.filter((e) => e.kind === 'sleep' && e.start < plan.depart);
+    expect(preflightBeds.length).toBeGreaterThan(0);
+    for (const bed of preflightBeds) {
+      const evening = plan.events.find((e) => e.kind === 'dark' && e.end === bed.start);
+      expect(evening).toBeDefined();
+      expect(bed.start - evening!.start).toBeGreaterThanOrEqual(2 * HOUR);
+    }
+  });
 });
