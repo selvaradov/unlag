@@ -4,7 +4,6 @@ import { DateTime, Settings } from 'luxon';
 import { registerSW } from 'virtual:pwa-register';
 import { generatePlan } from './algorithm/generate.ts';
 import type { Plan, PlanInput } from './algorithm/types.ts';
-import { HOUR } from './algorithm/time.ts';
 import { APP_NAME, HEADER } from './copy.ts';
 import { dayRows, renderDayList } from './ui/dayList.ts';
 import {
@@ -631,15 +630,34 @@ window.addEventListener('scroll', () => {
   });
 });
 
-// Every minute: headline, now line and the active segment, without touching the scroll position.
-setInterval(() => {
+// Headline, now line, active segment and today's row, without touching the scroll position.
+// Timers are throttled or suspended while the tab is hidden, so the tick compares against the
+// last tick rather than assuming a minute has passed, and runs again when the page comes back.
+let lastTick = Date.now();
+function tick(): void {
   const now = Date.now();
+  const since = lastTick;
+  lastTick = now;
   if (!selected) document.querySelector('.headline')?.replaceWith(renderHeadline(plan, now, null));
-  const line = document.getElementById('now');
-  if (line && now <= plan.planEnd) {
-    line.style.top = `${yOf(plan, now, pxPerHour)}px`;
-    line.querySelector('span')!.textContent = DateTime.fromMillis(now, { zone: zoneAt(plan, now) }).toFormat('HH:mm');
+  // The feed only needs rebuilding when something that depends on the time has changed: an
+  // event starting or ending, or the now line entering or leaving the axis.
+  const crossed = (t: number) => since < t && t <= now;
+  const edges = [axisStart(plan), plan.planEnd, ...plan.events.flatMap((e) => [e.start, e.end])];
+  if (edges.some(crossed)) {
+    replaceFeed();
+  } else {
+    const line = document.getElementById('now');
+    if (line) {
+      line.style.top = `${yOf(plan, now, pxPerHour)}px`;
+      line.querySelector('span')!.textContent = DateTime.fromMillis(now, { zone: zoneAt(plan, now) }).toFormat('HH:mm');
+    }
+    hideLabelsUnderNow();
   }
-  hideLabelsUnderNow();
-  if (Math.floor(now / HOUR) !== Math.floor((now - 60_000) / HOUR)) replaceFeed();
-}, 60_000);
+  const today = dayRows(plan, now).find((r) => r.today)?.iso;
+  for (const li of document.querySelectorAll<HTMLElement>('.day-list li'))
+    li.classList.toggle('today', li.dataset.day === today);
+}
+setInterval(tick, 60_000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') tick();
+});
