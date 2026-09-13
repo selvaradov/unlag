@@ -220,6 +220,36 @@ export const METHOD: { title: string; text: string }[] = [
   },
 ];
 
+export const LOOKUP = {
+  label: 'Flight number',
+  placeholder: 'UA 900',
+  date: 'Date',
+  button: 'Look up',
+  looking: 'Looking up…',
+  found: (from: string, to: string, dep: string, arr: string, length: string, stops: string[]) =>
+    `${from} ${dep} to ${to} ${arr}, ${length}${stops.length ? `, via ${stops.join(', ')}` : ''}. Filled in below.`,
+  errors: {
+    unavailable: 'Lookup is not set up on this site yet. Enter the flight by hand.',
+    'bad-request': 'That does not look like a flight number. Try the form UA 900.',
+    'not-found': 'No scheduled flight with that number on that date.',
+    'unknown-airport': 'Found the flight, but one of its airports is not in the list. Pick the airports by hand.',
+    failed: 'The lookup service did not answer. Enter the flight by hand.',
+  } as Record<string, string>,
+};
+
+export const WALK = {
+  title: 'Plan a trip',
+  intro: 'Three short steps. Everything stays in the page address, so the plan is yours to bookmark or share.',
+  steps: ['Your flight', 'Your sleep', 'Options'],
+  flightHint: 'Type the flight number and date, or pick the airports and enter the times yourself.',
+  sleepHint: 'Your usual bedtime and wake time at home. The plan shifts them a little each day.',
+  optionsHint: 'What you have to hand and how many days to prepare.',
+  back: 'Back',
+  next: 'Next',
+  finish: 'Make my plan',
+  example: 'Or see an example plan',
+};
+
 export const PICKER = {
   noMatch: 'No airport matches. Try the code, such as SFO.',
 };

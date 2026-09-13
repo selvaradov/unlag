@@ -46,6 +46,25 @@ its entrained position about when the rules say; Forger99 is slower and sits
 about 2 h short a week after landing, which is a known property of that
 model. The rules are kept as published rather than tuned to either.
 
+## Flight lookup
+
+Typing a flight number and date fills in the airports and times. The lookup
+runs through a Netlify Function, `netlify/functions/flight.mts`, which calls
+the Amadeus flight schedule API with a key held in environment variables, so
+nothing secret reaches the browser. Without the key the function answers 503
+and the form says lookup is not set up.
+
+To enable it, create a free app at https://developers.amadeus.com, then:
+
+```
+netlify env:set AMADEUS_CLIENT_ID <id>
+netlify env:set AMADEUS_CLIENT_SECRET <secret>
+netlify env:set AMADEUS_ENV test
+```
+
+`AMADEUS_ENV` is `test` for the free sandbox and `production` once the app is
+moved to production in the Amadeus portal. Redeploy after setting them.
+
 ## Development
 
 ```
@@ -55,6 +74,7 @@ pnpm test       # vitest, includes a snapshot of the default plan
 pnpm lint       # eslint and prettier
 pnpm plan       # print the default plan as a table
 pnpm build      # dist/
+netlify dev     # site plus the lookup function on one local port
 ```
 
 Deployed to Netlify from `dist/` with `netlify.toml`. The service worker
@@ -65,8 +85,9 @@ or the plus and minus buttons.
 ## Layout
 
 - `src/algorithm/` pure plan generation in UTC
-- `src/ui/` metro line feed, headline, day list, trip card, form, airport picker, URL state, calendar export
-- `src/data/` airports with cities and zones, loaded on demand; rebuild with `uv run scripts/build-airports.py` (OurAirports for type, code and scheduled service, OpenFlights for city and zone)
+- `src/ui/` metro line feed, headline, day list, trip card, walkthrough, shared trip fields, airport picker, URL state, calendar export
+- `netlify/functions/` the flight lookup proxy
+- `src/data/` airports with cities and zones, loaded on demand; flight lookup client; rebuild with `uv run scripts/build-airports.py` (OurAirports for type, code and scheduled service, OpenFlights for city and zone)
 - `src/config.ts`, `src/copy.ts` constants and copy
 - `tests/` unit and rendering tests
 - `scripts/print-plan.ts` command line plan printer

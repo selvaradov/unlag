@@ -20,7 +20,8 @@ import {
 import { dayLabel, zoneAbbr, zoneAt } from './ui/format.ts';
 import { renderHeadline } from './ui/headline.ts';
 import { ICONS } from './ui/icons.ts';
-import { readInput, writeInput } from './ui/state.ts';
+import { defaultInput, hasPlanInUrl, readInput, writeInput } from './ui/state.ts';
+import { renderWalkthrough } from './ui/walkthrough.ts';
 import { loadAirports } from './data/airports.ts';
 import { renderTripCard } from './ui/tripCard.ts';
 
@@ -380,6 +381,7 @@ function currentDayLabel(): string {
 }
 
 function render(): void {
+  if (!hasPlanInUrl(location.search)) return;
   const now = Date.now();
   const scrollY = window.scrollY;
   app.replaceChildren();
@@ -472,12 +474,39 @@ function render(): void {
   });
 }
 
+// Without a plan in the URL the page opens on the walkthrough.
+function renderWalkthroughPage(): void {
+  app.replaceChildren();
+  app.className = 'walk';
+  app.appendChild(
+    renderWalkthrough({
+      base: defaultInput(),
+      onFinish: (next) => {
+        applyInput(next);
+        history.pushState(null, '', writeInput(input));
+        render();
+        scrollToNow(false);
+      },
+      onExample: () => {
+        applyInput(defaultInput());
+        history.pushState(null, '', writeInput(input));
+        render();
+        scrollToNow(false);
+      },
+    }),
+  );
+}
+
 // Airport names are part of the first paint, so the list loads before the first render.
 loadAirports()
   .catch(() => null)
   .then(() => {
-    render();
-    scrollToNow(false);
+    if (hasPlanInUrl(location.search)) {
+      render();
+      scrollToNow(false);
+    } else {
+      renderWalkthroughPage();
+    }
   });
 
 window.addEventListener('keydown', (ev) => {

@@ -14,6 +14,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.10.0)
+      '@netlify/functions':
+        specifier: ^6.0.0
+        version: 6.0.0
       '@types/luxon':
         specifier: ^3.7.5
         version: 3.7.5
@@ -843,6 +846,16 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [glibc]
+
+  '@netlify/functions@6.0.0':
+    resolution:
+      { integrity: sha512-Pee+FoFnAtdejTkl62a7mZxj6Wx4eqVNuYyDc5T4XPJN9GaAWaUf4cZQFlf2m4Fqq0HoghjtcPKo+BZviVPPKA== }
+    engines: { node: '>=22.12.0' }
+
+  '@netlify/types@3.0.0':
+    resolution:
+      { integrity: sha512-zRCidsQgI4CZWrZB/kmwdPf0QbSNljakfNSLizFvrsSA3UcUrTWSBNMVKmZnob92/8ESeUN0ewXLOlffJU+ATQ== }
+    engines: { node: '>=22.12.0' }
 
   '@oxc-project/types@0.148.0':
     resolution:
@@ -3829,6 +3842,12 @@ snapshots:
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
+
+  '@netlify/functions@6.0.0':
+    dependencies:
+      '@netlify/types': 3.0.0
+
+  '@netlify/types@3.0.0': {}
 
   '@oxc-project/types@0.148.0': {}
 

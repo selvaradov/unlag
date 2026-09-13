@@ -69,3 +69,9 @@ export function writeInput(input: PlanInput): string {
   q.set(KEYS.lightBox, input.lightBox ? '1' : '0');
   return `?${q.toString()}`;
 }
+
+// True when the URL carries a plan of its own, rather than falling back to the example.
+export function hasPlanInUrl(search: string): boolean {
+  const q = new URLSearchParams(search);
+  return q.has(KEYS.depart) && q.has(KEYS.arrive);
+}

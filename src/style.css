@@ -49,6 +49,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   scroll-behavior: smooth;
   /* Keep the gutter so the page does not jump sideways when its height changes. */
@@ -1286,4 +1290,131 @@ dialog.sheet::backdrop {
   font-weight: 500;
   font-size: 9.5px;
   letter-spacing: 0.06em;
+}
+
+/* Walkthrough */
+
+.walkthrough {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+.walk-header h1 {
+  font-weight: 300;
+  font-size: 2rem;
+  margin: 12px 0 6px;
+}
+
+.walk-header .lede {
+  margin: 0 0 20px;
+  color: var(--muted);
+  max-width: 48ch;
+}
+
+.walk-steps {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  counter-reset: step;
+}
+
+.walk-steps li {
+  flex: 1;
+  padding: 8px 0 6px;
+  border-top: 2px solid var(--rule);
+  counter-increment: step;
+}
+
+.walk-steps li::before {
+  content: counter(step) ' ';
+  font-family: var(--mono);
+}
+
+.walk-steps li.current {
+  color: var(--ink);
+  border-top-color: var(--ink);
+}
+
+.walk-steps li.done {
+  border-top-color: var(--sleep);
+}
+
+.walk-form {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.walk-panel .hint-lede {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.walk-panel .grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.walk-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.walk-nav .icon-button:first-child .icon {
+  transform: rotate(90deg);
+}
+
+.walk-nav .icon-button.primary {
+  margin-left: auto;
+}
+
+.walk-nav .icon-button.primary .icon {
+  transform: rotate(-90deg);
+}
+
+.walkthrough .example {
+  display: block;
+  margin: 24px auto 0;
+  color: var(--muted);
+}
+
+/* Flight lookup */
+
+.lookup {
+  margin-bottom: 12px;
+}
+
+.lookup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  gap: 10px 12px;
+  align-items: end;
+}
+
+.lookup-row .icon-button {
+  height: 34px;
+}
+
+.lookup-status {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.lookup-status.error {
+  color: var(--now);
+}
+
+.lookup-status.ok {
+  color: var(--sleep);
+}
+
+.trip-form .lookup {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
 }
