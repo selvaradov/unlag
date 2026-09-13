@@ -20,6 +20,12 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.10.0)
+      '@fontsource-variable/ibm-plex-sans':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/ibm-plex-mono':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@netlify/functions':
         specifier: ^6.0.0
         version: 6.0.0
@@ -799,6 +805,14 @@ packages:
   '@fastify/busboy@3.2.2':
     resolution:
       { integrity: sha512-yXSS27qPExaXeuLvMRMXOLtpipzfQYNjG3FkunDWKGfMYjKuhFXko9CVzqxm8jcF+lmtS9Fd89QNdh9XDjnbNg== }
+
+  '@fontsource-variable/ibm-plex-sans@5.3.0':
+    resolution:
+      { integrity: sha512-agG8tXFEo0hD9+J7npa4vbbWult52eMLVaQ6WQRlhs/iCAojrMAoejru85W9HTVXHfyUj96KM7gp/KGAS87XaQ== }
+
+  '@fontsource/ibm-plex-mono@5.3.0':
+    resolution:
+      { integrity: sha512-eTgnZjZEGk1QtD3ZstF+Vclo2HLAni8YMy34/DxllwZvyz1lR/1RF/xTiAquOBO7MvqBx8D2Ig2WCPMVfdZu7Q== }
 
   '@humanfs/core@0.19.2':
     resolution:
@@ -4095,6 +4109,10 @@ snapshots:
   '@exodus/bytes@1.15.1': {}
 
   '@fastify/busboy@3.2.2': {}
+
+  '@fontsource-variable/ibm-plex-sans@5.3.0': {}
+
+  '@fontsource/ibm-plex-mono@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

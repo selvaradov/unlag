@@ -86,7 +86,8 @@ day list left and the trip card right. The day list draws each day's
 instructions on a noon to noon strip. The hour scale zooms by pinch, ctrl and
 wheel, or the magnifier buttons, and is remembered.
 
-Theme: paper and ink, IBM Plex Sans and Mono self hosted, icons from Lucide.
+Theme: paper and ink, IBM Plex Sans and Mono self hosted from the Fontsource
+packages, icons from Lucide.
 Light and dark follow the system by default; a toggle in the panel head (or the
 Trip sheet on phones) fixes light or dark, remembered on the device and applied
 before the first paint.
@@ -142,6 +143,7 @@ pnpm test       # vitest, includes a snapshot of the example plan
 pnpm lint       # eslint and prettier
 pnpm plan       # print the example plan as a table
 pnpm build      # dist/
+pnpm fonts      # refresh public/fonts from the Fontsource packages
 ```
 
 Deploy with `netlify deploy --prod --dir dist --no-build` from this folder.
