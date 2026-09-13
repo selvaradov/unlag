@@ -5,17 +5,18 @@ import type { PlanInput } from '../src/algorithm/types.ts';
 import { DEFAULT_INPUT } from '../src/config.ts';
 import { HOUR } from '../src/algorithm/time.ts';
 import { dayRows } from '../src/ui/dayList.ts';
-import { PX_PER_HOUR, feedItems, renderFeed, yOf } from '../src/ui/feed.ts';
+import { DEFAULT_PX_PER_HOUR, feedItems, renderFeed, timeAt, yOf } from '../src/ui/feed.ts';
 import { composeHeadline } from '../src/ui/headline.ts';
 import { toICS } from '../src/ui/ics.ts';
 import { readInput, writeInput } from '../src/ui/state.ts';
 
 const input: PlanInput = JSON.parse(JSON.stringify(DEFAULT_INPUT));
 const plan = generatePlan(input);
-const noop = { onSelect: () => {} };
+const px = DEFAULT_PX_PER_HOUR;
+const opts = (now: number) => ({ pxPerHour: px, width: 400, now, selected: null, onSelect: () => {} });
 
 describe('feed', () => {
-  it('adds an avoid caffeine stretch after each caffeine window', () => {
+  it('adds a no more caffeine stretch after each caffeine window', () => {
     const items = feedItems(plan);
     const ok = items.filter((i) => i.look === 'caffeine');
     const no = items.filter((i) => i.look === 'noCaffeine');
@@ -23,49 +24,60 @@ describe('feed', () => {
     for (const n of no) expect(n.event.end).toBeGreaterThan(n.event.start);
   });
 
-  it('draws a pill per item, a day header per day and the landing divider', () => {
-    // Day headers sit above pills so a capsule never covers the date.
-    const feed = renderFeed(plan, plan.depart, noop);
-    expect(feed.querySelector('.day-head')).not.toBeNull();
-    const el = renderFeed(plan, plan.depart, noop);
-    expect(el.querySelectorAll('.pill').length).toBe(feedItems(plan).length);
+  it('draws one item per feed item, a day header per day and the landing marker', () => {
+    const el = renderFeed(plan, opts(plan.depart));
+    expect(el.querySelectorAll('g.item').length).toBe(feedItems(plan).length);
     expect(el.querySelectorAll('.day-head').length).toBeGreaterThanOrEqual(8);
-    const landing = el.querySelector<HTMLElement>('.landing-divider')!;
-    expect(parseFloat(landing.style.top)).toBeCloseTo(yOf(plan, plan.arrive), 3);
+    const landing = el.querySelector<HTMLElement>('.landing')!;
+    expect(parseFloat(landing.style.top)).toBeCloseTo(yOf(plan, plan.arrive, px), 3);
     expect(el.querySelector('#now')).not.toBeNull();
   });
 
-  it('keeps pill heights proportional with a floor', () => {
-    const el = renderFeed(plan, plan.depart, noop);
-    const sleeps = [...el.querySelectorAll<HTMLElement>('.pill.look-sleep')];
-    expect(sleeps.length).toBeGreaterThan(5);
-    expect(parseFloat(sleeps[0].style.height)).toBeCloseTo(8 * PX_PER_HOUR, 3);
-    for (const p of el.querySelectorAll<HTMLElement>('.pill:not(.dot)'))
-      expect(parseFloat(p.style.height)).toBeGreaterThanOrEqual(40);
+  it('draws segments to scale and kinks the guide line at the flight', () => {
+    const el = renderFeed(plan, opts(plan.depart));
+    const sleep = el.querySelector<SVGLineElement>('g.look-sleep .seg')!;
+    const y1 = Number(sleep.getAttribute('y1'));
+    const y2 = Number(sleep.getAttribute('y2'));
+    expect(y2 - y1).toBeCloseTo(8 * px - 14, 3);
+    const guide = el.querySelector('path.guide')!.getAttribute('d')!;
+    expect(guide).toContain('l18,');
   });
 
   it('switches hour labels to the destination clock after landing', () => {
-    const el = renderFeed(plan, plan.depart, noop);
-    const labels = [...el.querySelectorAll<HTMLElement>('.hour-label.left')];
-    const before = labels.find((l) => Math.abs(parseFloat(l.style.top) - yOf(plan, plan.arrive - 95 * 60_000)) < 1);
-    const after = labels.find((l) => Math.abs(parseFloat(l.style.top) - yOf(plan, plan.arrive + 25 * 60_000)) < 1);
-    expect(before?.textContent).toBe('20:00');
-    expect(after?.textContent).toBe('14:00');
+    const el = renderFeed(plan, opts(plan.depart));
+    const labels = [...el.querySelectorAll<SVGTextElement>('text.hour-label:not(.other)')];
+    const at = (t: number) =>
+      labels.find((l) => Math.abs(Number(l.getAttribute('y')) - 4 - yOf(plan, t, px)) < 1)?.textContent;
+    expect(at(plan.arrive - 95 * 60_000)).toBe('20:00');
+    expect(at(plan.arrive + 25 * 60_000)).toBe('14:00');
+  });
+
+  it('marks the active segment', () => {
+    const el = renderFeed(plan, opts(plan.depart - HOUR));
+    expect(el.querySelector('g.item.active.look-dark')).not.toBeNull();
+  });
+
+  it('maps y back to time', () => {
+    expect(timeAt(plan, yOf(plan, plan.arrive, px), px)).toBeCloseTo(plan.arrive, 0);
   });
 });
 
 describe('headline', () => {
-  it('composes the active windows into a sentence', () => {
-    const { text } = composeHeadline(plan, plan.depart - 60 * 60_000);
-    expect(text).toBe('Avoid bright light');
-    const evening = composeHeadline(plan, plan.arrive + 5 * HOUR);
-    expect(evening.text).toMatch(/^See bright light/);
+  it('writes a note to self with what is next folded in', () => {
+    const { text, sub } = composeHeadline(plan, plan.depart - HOUR);
+    expect(text).toBe('sunglasses on until 09:45, then the flight at 10:35.');
+    expect(sub).toContain('to go');
   });
 
-  it('does not headline caffeine on its own', () => {
+  it('says when there is nothing to do and keeps caffeine as an aside', () => {
     const { text, sub } = composeHeadline(plan, plan.planStart + 3 * HOUR);
-    expect(text).toMatch(/^Nothing to do until/);
+    expect(text).toMatch(/^nothing until 20:00, then bright light\.$/);
     expect(sub).toContain('Caffeine is fine until');
+  });
+
+  it('names the evening light in the destination', () => {
+    const { text } = composeHeadline(plan, plan.arrive + 5 * HOUR);
+    expect(text).toMatch(/^get outside in the light until 22:00, then/);
   });
 });
 

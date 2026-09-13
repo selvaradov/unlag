@@ -1,39 +1,35 @@
-// The vertical timeline. A continuous axis, one pixel row per slice of time, with capsule
-// pills in three lanes: light, caffeine and melatonin, sleep. The flight is a rail on the right.
+// The vertical timeline, drawn as one metro style line. Time runs down. Sleep, light and
+// avoid light are thick segments on the main line with a station at each start; the flight
+// kinks the line; caffeine and melatonin run on a thin line to the right.
 import { DateTime } from 'luxon';
 import type { Plan, PlanEvent } from '../algorithm/types.ts';
 import { HOUR, MINUTE } from '../algorithm/time.ts';
 import { FEED, eventTitle } from '../copy.ts';
-import { clock, instruction, isPoint, zoneAbbr, zoneAt } from './format.ts';
+import { clock, duration, instruction, isPoint, zoneAbbr, zoneAt } from './format.ts';
 import { ICONS, type IconName } from './icons.ts';
 
-export const PX_PER_HOUR = 56;
-const MIN_PILL_PX = 40;
-const DOT_PX = 30;
+export const DEFAULT_PX_PER_HOUR = 56;
+export const MIN_PX_PER_HOUR = 18;
+export const MAX_PX_PER_HOUR = 150;
 
-type Lane = 'light' | 'pill' | 'sleep';
+const LEFT_COL = 56;
+const RIGHT_COL = 56;
+const MAIN_OFFSET = 40;
+const KINK = 18;
+const LABEL_GAP = 24;
+const SIDE_LINE_OFFSET = 132;
+const STATION_R = 11;
+const DOT_R = 9;
+const MAIN_W = 14;
+const THIN_W = 2.5;
 
 export interface FeedItem {
   event: PlanEvent;
-  // Visual kind, which separates derived items from raw event kinds.
   look: 'light' | 'dark' | 'caffeine' | 'noCaffeine' | 'caffeineDose' | 'melatonin' | 'sleep' | 'nap' | 'flight';
-  lane: Lane;
   icon: IconName;
   title: string;
   detail: string;
 }
-
-const LOOK_TO_LANE: Record<FeedItem['look'], Lane> = {
-  light: 'light',
-  dark: 'light',
-  caffeine: 'pill',
-  noCaffeine: 'pill',
-  caffeineDose: 'pill',
-  melatonin: 'pill',
-  sleep: 'sleep',
-  nap: 'sleep',
-  flight: 'sleep',
-};
 
 const LOOK_TO_ICON: Record<FeedItem['look'], IconName> = {
   light: 'sun',
@@ -47,29 +43,30 @@ const LOOK_TO_ICON: Record<FeedItem['look'], IconName> = {
   flight: 'plane',
 };
 
-// Turns plan events into feed items, adding the "avoid caffeine" stretch that follows each caffeine window.
+// Plan events become feed items, plus the "no more caffeine" stretch that follows each caffeine window.
 export function feedItems(plan: Plan): FeedItem[] {
   const items: FeedItem[] = [];
-  const sleeps = plan.events.filter((e) => e.kind === 'sleep' || e.kind === 'nap');
+  const sleeps = plan.events.filter((e) => e.kind === 'sleep');
   const make = (
     event: PlanEvent,
     look: FeedItem['look'],
     title = eventTitle(event),
     detail = instruction(plan, event),
-  ) => items.push({ event, look, lane: LOOK_TO_LANE[look], icon: LOOK_TO_ICON[look], title, detail });
+  ) => items.push({ event, look, icon: LOOK_TO_ICON[look], title, detail });
   for (const e of plan.events) {
-    switch (e.kind) {
-      case 'caffeine': {
-        make(e, 'caffeine');
-        const nextSleep = sleeps.find((s) => s.kind === 'sleep' && s.start >= e.end);
-        if (nextSleep && nextSleep.start - e.end > 30 * MINUTE) {
-          const avoid: PlanEvent = { kind: 'caffeine', start: e.end, end: nextSleep.start };
-          make(avoid, 'noCaffeine', FEED.noCaffeineTitle, FEED.noCaffeineDetail);
-        }
-        break;
+    if (e.kind === 'caffeine') {
+      make(e, 'caffeine');
+      const nextSleep = sleeps.find((s) => s.start >= e.end);
+      if (nextSleep && nextSleep.start - e.end > 30 * MINUTE) {
+        make(
+          { kind: 'caffeine', start: e.end, end: nextSleep.start },
+          'noCaffeine',
+          FEED.noCaffeineTitle,
+          FEED.noCaffeineDetail,
+        );
       }
-      default:
-        make(e, e.kind);
+    } else {
+      make(e, e.kind);
     }
   }
   return items;
@@ -79,28 +76,33 @@ export function axisStart(plan: Plan): number {
   return DateTime.fromMillis(plan.planStart, { zone: plan.input.homeZone }).startOf('day').toMillis();
 }
 
-export function yOf(plan: Plan, t: number): number {
-  return ((t - axisStart(plan)) / HOUR) * PX_PER_HOUR;
+export function yOf(plan: Plan, t: number, px: number): number {
+  return ((t - axisStart(plan)) / HOUR) * px;
 }
 
-interface Marker {
+export function timeAt(plan: Plan, y: number, px: number): number {
+  return axisStart(plan) + (y / px) * HOUR;
+}
+
+interface Mark {
   t: number;
+  hour: number;
   label: string;
   other: string;
   dayStart: boolean;
 }
 
 // Hour marks in the zone in effect, re-snapped to the destination clock at landing.
-function hourMarks(plan: Plan): Marker[] {
-  const out: Marker[] = [];
-  const end = plan.planEnd;
+function hourMarks(plan: Plan): Mark[] {
+  const out: Mark[] = [];
   let zone = zoneAt(plan, axisStart(plan));
   let t = DateTime.fromMillis(axisStart(plan), { zone });
-  while (t.toMillis() <= end) {
+  while (t.toMillis() <= plan.planEnd) {
     const ms = t.toMillis();
     const otherZone = zone === plan.input.homeZone ? plan.input.destZone : plan.input.homeZone;
     out.push({
       t: ms,
+      hour: t.hour,
       label: t.toFormat('HH:mm'),
       other: DateTime.fromMillis(ms, { zone: otherZone }).toFormat('HH:mm'),
       dayStart: t.hour === 0 && t.minute === 0,
@@ -115,6 +117,24 @@ function hourMarks(plan: Plan): Marker[] {
   return out;
 }
 
+function labelStep(px: number): number {
+  if (px >= 40) return 1;
+  if (px >= 22) return 2;
+  if (px >= 12) return 3;
+  return 6;
+}
+
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+function icon(name: IconName, cx: number, cy: number, size: number, color: string): string {
+  return ICONS[name].replace(
+    '<svg class="icon ',
+    `<svg x="${cx - size / 2}" y="${cy - size / 2}" width="${size}" height="${size}" style="color:${color}" class="icon `,
+  );
+}
+
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, html = ''): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   e.className = className;
@@ -122,88 +142,181 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, ht
   return e;
 }
 
-export interface FeedHandlers {
+export interface FeedOptions {
+  pxPerHour: number;
+  width: number;
+  now: number;
+  selected: FeedItem | null;
   onSelect: (item: FeedItem | null) => void;
 }
 
-export function renderFeed(plan: Plan, now: number, handlers: FeedHandlers): HTMLElement {
+export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
+  const { pxPerHour: px, width, now } = opts;
+  const y = (t: number) => yOf(plan, t, px);
+  const height = y(plan.planEnd) + px;
+  const mainX = LEFT_COL + MAIN_OFFSET;
+  const sideX = Math.min(width - RIGHT_COL - 96, mainX + SIDE_LINE_OFFSET);
+  const labelX = mainX + LABEL_GAP;
+  const items = feedItems(plan);
+  const step = labelStep(px);
+
   const root = el('section', 'feed');
-  const height = yOf(plan, plan.planEnd) + PX_PER_HOUR;
   root.style.height = `${height}px`;
 
-  // Hour grid, labels on both sides, day headers and the landing divider.
+  const svg: string[] = [];
+  svg.push(
+    `<svg class="rail" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`,
+  );
+
+  // Hour grid.
   for (const m of hourMarks(plan)) {
-    const y = yOf(plan, m.t);
-    if (!m.dayStart) {
-      const line = el('div', 'hour-line');
-      line.style.top = `${y}px`;
-      root.appendChild(line);
-      const left = el('span', 'hour-label left', m.label);
-      left.style.top = `${y}px`;
-      root.appendChild(left);
-      const right = el('span', 'hour-label right', m.other);
-      right.style.top = `${y}px`;
-      root.appendChild(right);
-    } else {
-      const zone = zoneAt(plan, m.t);
-      const head = el(
-        'div',
-        'day-head',
-        `<span>${DateTime.fromMillis(m.t, { zone }).setLocale('en-GB').toFormat('cccc d LLLL')}</span><span class="zone">${zoneAbbr(plan, m.t)}</span>`,
-      );
-      head.style.top = `${y}px`;
-      head.dataset.day = DateTime.fromMillis(m.t, { zone }).toISODate() ?? '';
-      root.appendChild(head);
+    if (m.dayStart) continue;
+    const yy = y(m.t);
+    const labelled = m.hour % step === 0;
+    svg.push(
+      `<line class="hour-line${labelled ? '' : ' minor'}" x1="${LEFT_COL}" x2="${width - RIGHT_COL}" y1="${yy}" y2="${yy}"/>`,
+    );
+    if (labelled) {
+      svg.push(`<text class="hour-label" x="${LEFT_COL - 8}" y="${yy + 4}" text-anchor="end">${m.label}</text>`);
+      svg.push(`<text class="hour-label other" x="${width - RIGHT_COL + 8}" y="${yy + 4}">${m.other}</text>`);
     }
+  }
+
+  // Guide line with the flight kink.
+  const yDep = y(plan.depart);
+  const yArr = y(plan.arrive);
+  const bend = Math.min(10, (yArr - yDep) / 4);
+  svg.push(
+    `<path class="guide" d="M${mainX},0 V${yDep} l${KINK},${bend} V${yArr - bend} l${-KINK},${bend} V${height}"/>`,
+  );
+  svg.push(`<line class="guide" x1="${sideX}" x2="${sideX}" y1="0" y2="${height}"/>`);
+
+  const onMain = (t: number) => (t > plan.depart && t < plan.arrive ? mainX + KINK : mainX);
+  const selectedKey = opts.selected ? `${opts.selected.look}-${opts.selected.event.start}` : '';
+
+  items.forEach((item, i) => {
+    const e = item.event;
+    const key = `${item.look}-${e.start}`;
+    const sel = key === selectedKey ? ' selected' : '';
+    const active = !isPoint(e) && e.start <= now && now < e.end;
+    const title = esc(
+      `${item.title}. ${isPoint(e) ? clock(plan, e.start) : `${clock(plan, e.start)} to ${clock(plan, e.end)}`}. ${item.detail}`,
+    );
+    const g = (body: string, cls: string) =>
+      svg.push(
+        `<g class="item ${cls}${sel}${active ? ' active' : ''}" data-i="${i}" tabindex="0" role="button"><title>${title}</title>${body}</g>`,
+      );
+
+    switch (item.look) {
+      case 'sleep':
+      case 'nap':
+      case 'light':
+      case 'dark': {
+        const x = onMain(e.start + MINUTE);
+        const y0 = y(e.start);
+        const y1 = y(e.end);
+        const w = item.look === 'nap' ? MAIN_W - 4 : MAIN_W;
+        const inset = w / 2;
+        let body = `<line class="seg" x1="${x}" x2="${x}" y1="${y0 + inset}" y2="${Math.max(y0 + inset, y1 - inset)}" stroke-width="${w}"/>`;
+        if (item.look === 'dark')
+          body += `<line class="seg-core" x1="${x}" x2="${x}" y1="${y0 + inset}" y2="${Math.max(y0 + inset, y1 - inset)}" stroke-width="${w - 5}"/>`;
+        body += `<circle class="station" cx="${x}" cy="${y0}" r="${STATION_R}"/>`;
+        body += icon(item.icon, x, y0, 14, 'var(--station-ink)');
+        const tall = y1 - y0;
+        const lx = x + LABEL_GAP;
+        body += `<text class="seg-title" x="${lx}" y="${y0 + 4}">${esc(item.title)}${e.optional ? `<tspan class="opt"> ${FEED.optional}</tspan>` : ''}</text>`;
+        if (tall >= 34) body += `<text class="seg-meta" x="${lx}" y="${y0 + 20}">${duration(e.end - e.start)}</text>`;
+        if (active && tall >= 50)
+          body += `<text class="seg-until" x="${lx}" y="${y0 + 36}">${FEED.until(clock(plan, e.end))}</text>`;
+        g(body, `look-${item.look}`);
+        break;
+      }
+      case 'flight': {
+        let body = `<circle class="station" cx="${mainX}" cy="${yDep}" r="${STATION_R}"/>${icon('plane', mainX, yDep, 14, 'var(--station-ink)')}`;
+        body += `<circle class="station" cx="${mainX}" cy="${yArr}" r="${STATION_R}"/>${icon('landing', mainX, yArr, 14, 'var(--station-ink)')}`;
+        body += `<text class="seg-title" x="${labelX}" y="${yDep - 8}">${esc(item.title)} <tspan class="seg-meta">${duration(e.end - e.start)}</tspan></text>`;
+        g(body, 'look-flight');
+        break;
+      }
+      case 'caffeine':
+      case 'noCaffeine': {
+        const y0 = y(e.start);
+        const y1 = y(e.end);
+        const dashed = item.look === 'noCaffeine' ? ' dashed' : '';
+        let body = `<line class="side${dashed}" x1="${sideX}" x2="${sideX}" y1="${y0}" y2="${y1}" stroke-width="${THIN_W}"/>`;
+        const doseNear = items.some(
+          (o) => o.look === 'caffeineDose' && Math.abs(o.event.start - e.start) < 30 * MINUTE,
+        );
+        if (!doseNear || item.look === 'noCaffeine') {
+          const [t1, t2] =
+            item.look === 'caffeine' ? [FEED.caffeineFine, FEED.until(clock(plan, e.end))] : [item.title, ''];
+          body += `<text class="side-title" x="${sideX + 14}" y="${y0 + 4}">${esc(t1)}</text>`;
+          if (t2 && y1 - y0 >= 30) body += `<text class="side-meta" x="${sideX + 14}" y="${y0 + 18}">${esc(t2)}</text>`;
+        }
+        g(body, `look-${item.look}`);
+        break;
+      }
+      case 'caffeineDose':
+      case 'melatonin': {
+        const y0 = y(e.start);
+        let body = `<circle class="dot" cx="${sideX}" cy="${y0}" r="${DOT_R}"/>${icon(item.icon, sideX, y0, 11, 'var(--dot-ink)')}`;
+        body += `<text class="side-title" x="${sideX + 14}" y="${y0 + 4}">${esc(item.look === 'melatonin' ? 'melatonin' : 'caffeine')}</text>`;
+        body += `<text class="side-meta" x="${sideX + 14}" y="${y0 + 18}">${esc(e.note ?? '')}${e.optional ? ` ${FEED.optional}` : ''}</text>`;
+        g(body, `look-${item.look}`);
+        break;
+      }
+    }
+  });
+  svg.push('</svg>');
+  root.innerHTML = svg.join('');
+
+  const rail = root.querySelector('svg')!;
+  rail.addEventListener('click', (ev) => {
+    const g = (ev.target as Element).closest<SVGGElement>('g.item');
+    if (!g) return;
+    const item = items[Number(g.dataset.i)];
+    const already = g.classList.contains('selected');
+    rail.querySelectorAll('g.item.selected').forEach((s) => s.classList.remove('selected'));
+    if (already) {
+      opts.onSelect(null);
+    } else {
+      g.classList.add('selected');
+      opts.onSelect(item);
+    }
+  });
+  rail.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      (ev.target as HTMLElement).click();
+      ev.preventDefault();
+    }
+  });
+
+  // Day headers, the landing divider and the now line are HTML so they can carry backgrounds.
+  for (const m of hourMarks(plan)) {
+    if (!m.dayStart) continue;
+    const zone = zoneAt(plan, m.t);
+    const d = DateTime.fromMillis(m.t, { zone });
+    const head = el(
+      'div',
+      'day-head',
+      `<span>${d.toFormat('cccc d LLLL')}</span><span class="zone">${zoneAbbr(plan, m.t)} · ${FEED.otherZone(zoneAbbr(plan, m.t, zone === plan.input.homeZone ? plan.input.destZone : plan.input.homeZone))}</span>`,
+    );
+    head.style.top = `${y(m.t)}px`;
+    head.dataset.day = d.toISODate() ?? '';
+    root.appendChild(head);
   }
   const landing = el(
     'div',
-    'landing-divider',
-    `${ICONS.landing}<span>${FEED.landed(clock(plan, plan.arrive), zoneAbbr(plan, plan.arrive), plan.totalShiftHours, plan.direction)}</span>`,
+    'landing',
+    FEED.landed(clock(plan, plan.arrive), zoneAbbr(plan, plan.arrive), plan.totalShiftHours, plan.direction),
   );
-  landing.style.top = `${yOf(plan, plan.arrive)}px`;
+  landing.style.top = `${yArr}px`;
+  landing.style.right = `${RIGHT_COL + 6}px`;
   root.appendChild(landing);
 
-  // Pills.
-  const items = feedItems(plan);
-  for (const item of items) {
-    const e = item.event;
-    const point = isPoint(e);
-    const y0 = yOf(plan, e.start);
-    const h = point ? DOT_PX : Math.max(MIN_PILL_PX, yOf(plan, e.end) - y0);
-    const pill = el(
-      'button',
-      `pill lane-${item.lane} look-${item.look}${point ? ' dot' : ''}${e.optional ? ' optional' : ''}`,
-    );
-    pill.type = 'button';
-    pill.style.top = `${point ? y0 - DOT_PX / 2 : y0}px`;
-    pill.style.height = `${h}px`;
-    const active = !point && e.start <= now && now < e.end;
-    if (active) pill.classList.add('active');
-    pill.innerHTML =
-      ICONS[item.icon] +
-      (active && h > 90 ? `<span class="until">${FEED.until(clock(plan, e.end))}</span>` : '') +
-      (item.look === 'flight' && h > 120 ? `<span class="rail-text">${FEED.flightRail}</span>` : '');
-    pill.title = `${item.title}. ${point ? clock(plan, e.start) : `${clock(plan, e.start)} to ${clock(plan, e.end)}`}. ${item.detail}`;
-    pill.setAttribute('aria-label', pill.title);
-    pill.addEventListener('click', () => {
-      const selected = root.querySelector('.pill.selected');
-      if (selected === pill) {
-        pill.classList.remove('selected');
-        handlers.onSelect(null);
-        return;
-      }
-      selected?.classList.remove('selected');
-      pill.classList.add('selected');
-      handlers.onSelect(item);
-    });
-    root.appendChild(pill);
-  }
-
-  // Now line.
   if (now >= axisStart(plan) && now <= plan.planEnd) {
     const line = el('div', 'now-line', `<span>${clock(plan, now)}</span>`);
-    line.style.top = `${yOf(plan, now)}px`;
+    line.style.top = `${y(now)}px`;
     line.id = 'now';
     root.appendChild(line);
   }

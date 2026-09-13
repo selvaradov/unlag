@@ -5,14 +5,14 @@ export const APP_NAME = 'Unlag';
 export const TAGLINE = 'A jet lag schedule from your flight and your sleep.';
 
 export const KIND_LABEL: Record<EventKind, string> = {
-  sleep: 'Sleep',
-  nap: 'Nap',
-  light: 'Get bright light',
-  dark: 'Avoid bright light',
-  caffeine: 'Caffeine is fine',
-  caffeineDose: 'Caffeine',
-  melatonin: 'Melatonin',
-  flight: 'Flight',
+  sleep: 'sleep',
+  nap: 'nap',
+  light: 'get bright light',
+  dark: 'avoid bright light',
+  caffeine: 'caffeine is fine',
+  caffeineDose: 'caffeine',
+  melatonin: 'melatonin',
+  flight: 'flight',
 };
 
 export interface EventContext {
@@ -26,13 +26,13 @@ export interface EventContext {
 export function eventTitle(e: PlanEvent): string {
   switch (e.kind) {
     case 'sleep':
-      return e.note === 'onBoard' ? 'Sleep on the plane' : 'Sleep';
+      return e.note === 'onBoard' ? 'sleep on the plane' : 'sleep';
     case 'nap':
-      return 'Nap if you can, up to 90 min';
+      return 'nap if you can';
     case 'caffeineDose':
-      return `Caffeine, ${e.note}`;
+      return `caffeine, ${e.note}`;
     case 'melatonin':
-      return `Melatonin, ${e.note}`;
+      return `melatonin, ${e.note}`;
     default:
       return KIND_LABEL[e.kind];
   }
@@ -100,33 +100,41 @@ export const FOOTER =
   'Rules from Burgess, Using bright light and melatonin to reduce jet lag, and the light and melatonin phase response curves. Not medical advice.';
 
 export const HEADLINE = {
-  sleep: 'sleep',
-  sleepOnBoard: 'sleep on the plane',
-  nap: 'nap if you can',
-  dark: 'avoid bright light',
-  light: 'see bright light',
-  caffeine: 'caffeine is fine',
-  melatonin: 'take melatonin',
-  caffeineDose: 'take caffeine',
-  landingSoon: 'get ready to land',
-  joiner: ' and ',
-  notStarted: 'Your plan has not started yet',
-  startsOn: (day: string) => `It starts on ${day}.`,
-  over: 'Your plan is over. You should be adapted.',
-  nothing: 'Nothing to do right now',
-  freeUntil: (t: string) => `Nothing to do until ${t}`,
+  nowSleep: (until: string) => `sleep until ${until}`,
+  nowSleepOnBoard: (until: string) => `sleep on the plane until ${until}`,
+  nowNap: (until: string) => `nap if you can, until ${until}`,
+  nowSunglasses: (until: string) => `sunglasses on until ${until}`,
+  nowDim: (until: string) => `keep the lights low until ${until}`,
+  nowOutside: (until: string) => `get outside in the light until ${until}`,
+  nowBright: (until: string) => `bright light until ${until}`,
+  nowFlying: (until: string) => `in the air until ${until}`,
+  at: (t: string) => ` at ${t}`,
+  nextBed: (at: string) => `then bed${at}`,
+  nextSleepOnBoard: (at: string) => `then sleep on the plane${at}`,
+  nextNap: (at: string) => `then a nap${at}`,
+  nextSunglasses: (at: string) => `then sunglasses on${at}`,
+  nextDim: (at: string) => `then lights low${at}`,
+  nextBright: (at: string) => `then bright light${at}`,
+  nextFlight: (at: string) => `then the flight${at}`,
+  nextMelatonin: (at: string) => `then melatonin${at}`,
+  nextCaffeine: (at: string) => `then caffeine${at}`,
+  nothingUntil: (t: string) => `nothing until ${t}`,
+  toGo: (d: string) => `${d} to go.`,
   caffeineAside: (t: string) => `Caffeine is fine until ${t}.`,
-  next: (what: string, when: string, inHow: string) => `Next, ${what.toLowerCase()} at ${when}, in ${inHow}.`,
+  notStarted: (day: string) => `your plan starts on ${day}.`,
+  over: 'your plan is over. You should be adapted.',
   optional: 'optional',
 };
 
 export const FEED = {
-  until: (t: string) => `Until ${t}`,
-  flightRail: 'Flight',
-  noCaffeineTitle: 'No more caffeine today',
+  until: (t: string) => `until ${t}`,
+  optional: '· optional',
+  noCaffeineTitle: 'no more caffeine',
   noCaffeineDetail: "Anything now would cut into tonight's sleep.",
+  caffeineFine: 'caffeine is fine',
+  otherZone: (zone: string) => `${zone} on the right`,
   landed: (t: string, zone: string, hours: number, direction: Direction) =>
-    `Landed ${t} ${zone}. Clocks ${direction === 'delay' ? 'go back' : 'go forward'} ${hours} h. Times below are local.`,
+    `landed ${t} ${zone} · clocks ${direction === 'delay' ? '−' : '+'}${hours} h`,
 };
 
 export const DAYLIST = {
@@ -139,4 +147,7 @@ export const HEADER = {
   close: 'Close',
   jumpToNow: 'Now',
   pickDay: 'Choose a day',
+  zoomIn: 'Zoom in',
+  zoomOut: 'Zoom out',
+  days: 'Days',
 };

@@ -57,12 +57,14 @@ pnpm build      # dist/
 ```
 
 Deployed to Netlify from `dist/` with `netlify.toml`. The service worker
-caches the app so it works offline after the first load.
+caches the app and the self hosted IBM Plex fonts so it works offline after
+the first load. The hour scale zooms with a two finger pinch, ctrl and wheel,
+or the plus and minus buttons.
 
 ## Layout
 
 - `src/algorithm/` pure plan generation in UTC
-- `src/ui/` feed, headline, day list, form, URL state, calendar export
+- `src/ui/` metro line feed, headline, day list, form, URL state, calendar export
 - `src/config.ts`, `src/copy.ts` constants and copy
 - `tests/` unit and rendering tests
 - `scripts/print-plan.ts` command line plan printer
