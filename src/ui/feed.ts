@@ -84,8 +84,15 @@ const LOOK_TO_ICON: Record<FeedItem['look'], IconName> = {
   flight: 'planeTakeoff',
 };
 
+const itemCache = new WeakMap<Plan, FeedItem[]>();
+const axisCache = new WeakMap<Plan, number>();
+const markCache = new WeakMap<Plan, Mark[]>();
+const labelCache = new WeakMap<Plan, { title: string; duration: string; endClock: string }[]>();
+
 // Plan events become feed items, plus the "no more caffeine" stretch that follows each caffeine window.
 export function feedItems(plan: Plan): FeedItem[] {
+  const cached = itemCache.get(plan);
+  if (cached) return cached;
   const items: FeedItem[] = [];
   const sleeps = plan.events.filter((e) => e.kind === 'sleep');
   const make = (
@@ -110,11 +117,17 @@ export function feedItems(plan: Plan): FeedItem[] {
       make(e, e.kind);
     }
   }
+  itemCache.set(plan, items);
   return items;
 }
 
 export function axisStart(plan: Plan): number {
-  return DateTime.fromMillis(plan.planStart, { zone: plan.input.homeZone }).startOf('day').toMillis();
+  let start = axisCache.get(plan);
+  if (start === undefined) {
+    start = DateTime.fromMillis(plan.planStart, { zone: plan.input.homeZone }).startOf('day').toMillis();
+    axisCache.set(plan, start);
+  }
+  return start;
 }
 
 // Pixel offset of an instant from the top of the feed element.
@@ -132,22 +145,30 @@ interface Mark {
   label: string;
   other: string;
   dayStart: boolean;
+  dayLabel: string;
+  day: string;
 }
 
 // Hour marks in the zone in effect, re-snapped to the destination clock at landing.
 function hourMarks(plan: Plan): Mark[] {
+  const cached = markCache.get(plan);
+  if (cached) return cached;
   const out: Mark[] = [];
   let zone = zoneAt(plan, axisStart(plan));
   let t = DateTime.fromMillis(axisStart(plan), { zone });
   while (t.toMillis() <= plan.planEnd) {
     const ms = t.toMillis();
     const otherZone = zone === plan.input.homeZone ? plan.input.destZone : plan.input.homeZone;
+    const dayStart = t.hour === 0 && t.minute === 0;
+    const day = dayStart ? DateTime.fromMillis(ms, { zone: zoneAt(plan, ms) }) : null;
     out.push({
       t: ms,
       hour: t.hour,
       label: t.toFormat('HH:mm'),
       other: DateTime.fromMillis(ms, { zone: otherZone }).toFormat('HH:mm'),
-      dayStart: t.hour === 0 && t.minute === 0,
+      dayStart,
+      dayLabel: day?.toFormat('cccc d LLLL') ?? '',
+      day: day?.toISODate() ?? '',
     });
     let next = t.plus({ hours: 1 });
     if (ms < plan.arrive && next.toMillis() > plan.arrive) {
@@ -156,6 +177,7 @@ function hourMarks(plan: Plan): Mark[] {
     }
     t = next;
   }
+  markCache.set(plan, out);
   return out;
 }
 
@@ -168,6 +190,23 @@ function labelStep(px: number): number {
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+function itemLabels(plan: Plan): { title: string; duration: string; endClock: string }[] {
+  const cached = labelCache.get(plan);
+  if (cached) return cached;
+  const labels = feedItems(plan).map((item) => {
+    const e = item.event;
+    const endClock = clock(plan, e.end);
+    const time = isPoint(e) ? clock(plan, e.start) : `${clock(plan, e.start)} to ${endClock}`;
+    return {
+      title: esc(`${item.title}. ${time}. ${item.detail}`),
+      duration: duration(e.end - e.start),
+      endClock,
+    };
+  });
+  labelCache.set(plan, labels);
+  return labels;
 }
 
 // Cut text that would run past the available width, judged from an average glyph width.
@@ -273,6 +312,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
   const sideRoom = width - rightCol - sideLabelX;
   const mainRoom = sideX - m.dot - 6 - labelX;
   const items = feedItems(plan);
+  const labels = itemLabels(plan);
   const step = labelStep(px);
   const titleH = m.font + 4;
   const metaH = m.meta + 3;
@@ -291,10 +331,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     const yy = y(mk.t);
     if (mk.dayStart) {
       svg.push(`<line class="hour-line day-line" x1="${LEFT_COL}" x2="${width - rightCol}" y1="${yy}" y2="${yy}"/>`);
-      const d = DateTime.fromMillis(mk.t, { zone: zoneAt(plan, mk.t) });
-      svg.push(
-        `<text class="day-label" x="${width - rightCol}" y="${yy - 6}" text-anchor="end">${d.toFormat('cccc d LLLL')}</text>`,
-      );
+      svg.push(`<text class="day-label" x="${width - rightCol}" y="${yy - 6}" text-anchor="end">${mk.dayLabel}</text>`);
       continue;
     }
     const labelled = mk.hour % step === 0;
@@ -369,12 +406,10 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     const key = `${item.look}-${e.start}`;
     const sel = key === selectedKey ? ' selected' : '';
     const active = !isPoint(e) && e.start <= now && now < e.end;
-    const title = esc(
-      `${item.title}. ${isPoint(e) ? clock(plan, e.start) : `${clock(plan, e.start)} to ${clock(plan, e.end)}`}. ${item.detail}`,
-    );
+    const label = labels[i];
     const g = (body: string, cls: string) =>
       svg.push(
-        `<g class="item ${cls}${sel}${active ? ' active' : ''}" data-i="${i}" tabindex="0" role="button"><title>${title}</title>${body}</g>`,
+        `<g class="item ${cls}${sel}${active ? ' active' : ''}" data-i="${i}" tabindex="0" role="button"><title>${label.title}</title>${body}</g>`,
       );
 
     switch (item.look) {
@@ -398,8 +433,8 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
         const lines = wrap(item.title + (e.optional ? ` ${FEED.optional}` : ''), room, m.font, 3).map((t) =>
           line('seg-title', t, titleH),
         );
-        lines.push(line('seg-meta', duration(e.end - e.start), metaH));
-        if (active) lines.push(line('seg-until', FEED.until(clock(plan, e.end)), metaH));
+        lines.push(line('seg-meta', label.duration, metaH));
+        if (active) lines.push(line('seg-until', FEED.until(label.endClock), metaH));
         // An item starting on a day boundary keeps its label below the date rule.
         const onBoundary = marks.some((mk) => mk.dayStart && Math.abs(mk.t - e.start) < 15 * MINUTE);
         blocks.push({
@@ -423,7 +458,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
           maxY: yDep + m.station,
           x: labelX,
           item: i,
-          lines: [line('seg-title', `${item.title} · ${duration(e.end - e.start)}`, titleH)],
+          lines: [line('seg-title', `${item.title} · ${label.duration}`, titleH)],
         });
         // The landing label sits under the break rule, not across it.
         blocks.push({
@@ -433,7 +468,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
           x: labelX,
           item: i,
           lines: [
-            line('seg-title landing', FEED.landed(clock(plan, plan.arrive)), titleH),
+            line('seg-title landing', FEED.landed(label.endClock), titleH),
             line('seg-meta', FEED.clocksChange(plan.totalShiftHours, plan.direction), metaH),
           ],
         });
@@ -452,7 +487,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
           const lines = wrap(item.look === 'caffeine' ? FEED.caffeineFine : item.title, sideRoom, m.font, 2).map((t) =>
             line('side-title', t, titleH - 2),
           );
-          if (item.look === 'caffeine') lines.push(line('side-meta', FEED.until(clock(plan, e.end)), metaH));
+          if (item.look === 'caffeine') lines.push(line('side-meta', FEED.until(label.endClock), metaH));
           blocks.push({
             lane: 'side',
             top: y0 - m.font * 0.6,
@@ -524,7 +559,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     if (!mk.dayStart) continue;
     const anchor = el('div', 'day-head');
     anchor.style.top = `${y(mk.t)}px`;
-    anchor.dataset.day = DateTime.fromMillis(mk.t, { zone: zoneAt(plan, mk.t) }).toISODate() ?? '';
+    anchor.dataset.day = mk.day;
     root.appendChild(anchor);
   }
   if (now >= axisStart(plan) && now <= plan.planEnd) {

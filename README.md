@@ -81,12 +81,11 @@ buttons, Edit trip, Notify me, and a link to the method page. Editing replaces
 the card with the form; Cancel restores the inputs. Without a plan in the URL
 the page opens on a three step walkthrough.
 
-Layouts: under 900 px a sticky header with the day name (opens a day list) and
-a Trip button (opens the card as a sheet), zoom and Now floating; 900 to 1199
-px a side panel with Plan and Trip tabs; from 1200 px three columns with the
-day list left and the trip card right. The day list draws each day's
-instructions on a noon to noon strip. The hour scale zooms by pinch, ctrl and
-wheel, or the magnifier buttons, and is remembered.
+Layouts: under 900 px a fixed header with day and Trip sheets, zoom and Now
+floating; 900 to 1199 px a side panel with Plan and Trip tabs; from 1200 px
+three columns with the day list left and trip card right. Days show instructions
+on a noon to noon strip. Pinch previews stretch the feed and relayout on release;
+ctrl and wheel or repeated magnifier presses zoom. The scale is remembered.
 
 Theme: paper and ink, IBM Plex Sans and Mono self hosted from the Fontsource
 packages, icons from Lucide.
@@ -152,6 +151,8 @@ pnpm plan       # print the example plan as a table
 pnpm build      # dist/
 pnpm fonts      # refresh public/fonts from the Fontsource packages
 ```
+
+Browser zoom checks against the dev server: `node analysis/zoom-benchmark.mjs --playwright <module-path>`.
 
 Deploy with `netlify deploy --prod --dir dist --no-build` from this folder.
 The site is a separate Netlify project with the custom domain attached; the

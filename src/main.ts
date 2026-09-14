@@ -75,15 +75,21 @@ function saveScale(): void {
   }
 }
 
-// Scrolling. The feed lives in the page; the sticky parts sit above or beside it.
+// The feed scrolls in the page beneath the mobile bar or beside the desktop panels.
 
 function feedEl(): HTMLElement | null {
   return document.querySelector<HTMLElement>('.feed');
 }
 
-function stickyHeight(): number {
-  return MEDIUM.matches ? 0 : (document.querySelector<HTMLElement>('.sticky')?.offsetHeight ?? 0);
+function topBarHeight(): number {
+  return MEDIUM.matches ? 0 : (document.querySelector<HTMLElement>('.top-bar')?.offsetHeight ?? 0);
 }
+
+function updateTopBarHeight(): void {
+  app.style.setProperty('--top-bar-height', `${topBarHeight()}px`);
+}
+
+const topBarObserver = new ResizeObserver(updateTopBarHeight);
 
 function feedTop(): number {
   const feed = feedEl();
@@ -91,7 +97,7 @@ function feedTop(): number {
 }
 
 function focusLine(): number {
-  return stickyHeight() + (window.innerHeight - stickyHeight()) * 0.3;
+  return topBarHeight() + (window.innerHeight - topBarHeight()) * 0.3;
 }
 
 function scrollToTime(t: number, smooth = true): void {
@@ -133,29 +139,46 @@ function zoomBy(factor: number): void {
   setScale(pxPerHour * factor, timeAtFocus(), focusLine());
 }
 
+// Pinching stretches the feed with a transform while the fingers are down and rebuilds it once when
+// they lift. A rebuild parses the whole plan as SVG, which is too slow to repeat on every frame.
 function attachZoom(feed: HTMLElement): void {
+  let active = false;
   let startDist = 0;
   let startPx = 0;
+  let ratio = 1;
   let anchorTime = 0;
   let anchorY = 0;
+  let anchorStartY = 0;
   let fingers = '';
   let pending = false;
   const ids = (list: TouchList) => [...list].map((t) => t.identifier).join(',');
+  const targetPx = () => Math.min(MAX_PX_PER_HOUR, Math.max(MIN_PX_PER_HOUR, startPx * ratio));
   const begin = (a: { clientX: number; clientY: number }, b: { clientX: number; clientY: number }, dist: number) => {
+    active = true;
     startDist = dist;
     startPx = pxPerHour;
-    anchorY = (a.clientY + b.clientY) / 2;
-    anchorTime = timeAt(plan, anchorY + window.scrollY - feedTop(), pxPerHour);
+    ratio = 1;
+    anchorY = anchorStartY = (a.clientY + b.clientY) / 2;
+    const feedY = anchorY + window.scrollY - feedTop();
+    anchorTime = timeAt(plan, feedY, pxPerHour);
+    feed.style.transformOrigin = `0 ${feedY}px`;
   };
-  const apply = (ratio: number) => {
+  const preview = (r: number) => {
+    ratio = r;
     if (pending) return;
     pending = true;
     requestAnimationFrame(() => {
       pending = false;
-      // A single step never changes the scale by more than a fifth, so a mis-read finger cannot fling it.
-      const target = Math.min(pxPerHour * 1.2, Math.max(pxPerHour / 1.2, startPx * ratio));
-      setScale(target, anchorTime, anchorY);
+      if (!active) return;
+      feed.style.transform = `translateY(${anchorY - anchorStartY}px) scaleY(${targetPx() / startPx})`;
     });
+  };
+  const finish = () => {
+    if (!active) return;
+    active = false;
+    feed.style.transform = '';
+    feed.style.transformOrigin = '';
+    setScale(targetPx(), anchorTime, anchorY);
   };
   if ('GestureEvent' in window) {
     // iOS reports pinches as gesture events with a running scale; stopping them also stops the page zooming.
@@ -166,42 +189,42 @@ function attachZoom(feed: HTMLElement): void {
     });
     feed.addEventListener('gesturechange', (ev) => {
       ev.preventDefault();
-      apply((ev as unknown as { scale: number }).scale);
+      preview((ev as unknown as { scale: number }).scale);
     });
-    feed.addEventListener('gestureend', (ev) => ev.preventDefault());
+    feed.addEventListener('gestureend', (ev) => {
+      ev.preventDefault();
+      finish();
+    });
   } else {
+    const dist = (a: Touch, b: Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
     feed.addEventListener(
       'touchstart',
       (ev) => {
         if (ev.touches.length !== 2) return;
-        const [a, b] = [ev.touches[0], ev.touches[1]];
         fingers = ids(ev.touches);
-        begin(a, b, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY));
+        begin(ev.touches[0], ev.touches[1], dist(ev.touches[0], ev.touches[1]));
       },
       { passive: true },
     );
     feed.addEventListener(
       'touchmove',
       (ev) => {
-        if (ev.touches.length !== 2 || startDist === 0) return;
-        // A changed pair of fingers starts a fresh pinch rather than continuing the old one.
+        if (!active || ev.touches.length !== 2) return;
+        const [a, b] = [ev.touches[0], ev.touches[1]];
+        // A changed pair of fingers carries on from the current stretch rather than jumping.
         if (ids(ev.touches) !== fingers) {
-          const [a, b] = [ev.touches[0], ev.touches[1]];
           fingers = ids(ev.touches);
-          begin(a, b, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY));
+          startDist = dist(a, b) / ratio;
           return;
         }
         ev.preventDefault();
-        const [a, b] = [ev.touches[0], ev.touches[1]];
         anchorY = (a.clientY + b.clientY) / 2;
-        apply(Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) / startDist);
+        preview(dist(a, b) / startDist);
       },
       { passive: false },
     );
-    feed.addEventListener('touchend', () => {
-      startDist = 0;
-      fingers = '';
-    });
+    feed.addEventListener('touchend', finish);
+    feed.addEventListener('touchcancel', finish);
   }
   feed.addEventListener(
     'wheel',
@@ -318,16 +341,12 @@ function zoomGroup(): HTMLElement {
   out.title = HEADER.zoomOut;
   out.setAttribute('aria-label', HEADER.zoomOut);
   out.addEventListener('click', () => zoomBy(1 / 1.3));
-  out.title = `${HEADER.zoomOut}. ${HEADER.zoomHint}`;
-  out.addEventListener('dblclick', () => zoomBy(DEFAULT_PX_PER_HOUR / pxPerHour));
   const inn = document.createElement('button');
   inn.type = 'button';
   inn.innerHTML = ICONS.zoomIn;
   inn.title = HEADER.zoomIn;
   inn.setAttribute('aria-label', HEADER.zoomIn);
   inn.addEventListener('click', () => zoomBy(1.3));
-  inn.title = `${HEADER.zoomIn}. ${HEADER.zoomHint}`;
-  inn.addEventListener('dblclick', () => zoomBy(DEFAULT_PX_PER_HOUR / pxPerHour));
   wrap.append(out, inn);
   return wrap;
 }
@@ -353,7 +372,7 @@ function updateZoneTags(): void {
   const breakY = feedTop() + yOf(plan, plan.arrive, pxPerHour) - window.scrollY;
   const chrome = MEDIUM.matches
     ? (document.querySelector<HTMLElement>('.toolbar')?.getBoundingClientRect().bottom ?? 0)
-    : stickyHeight();
+    : topBarHeight();
   const t = breakY <= chrome ? plan.arrive : plan.arrive - 1;
   const zone = zoneAt(plan, t);
   const other = zone === plan.input.homeZone ? plan.input.destZone : plan.input.homeZone;
@@ -466,6 +485,7 @@ function render(): void {
   if (!hasPlanInUrl(location.search)) return;
   const now = Date.now();
   const scrollY = window.scrollY;
+  topBarObserver.disconnect();
   app.replaceChildren();
 
   if (WIDE.matches) {
@@ -522,10 +542,12 @@ function render(): void {
     brandCell.className = 'brand-cell';
     brandCell.append(brand(), zoneTags());
     header.append(brandCell, dayButton, tripButton);
-    const sticky = document.createElement('div');
-    sticky.className = 'sticky';
-    sticky.append(header, renderHeadline(plan, now, selected, clearSelection));
-    app.appendChild(sticky);
+    const topBar = document.createElement('div');
+    topBar.className = 'top-bar';
+    topBar.append(header, renderHeadline(plan, now, selected, clearSelection));
+    app.appendChild(topBar);
+    updateTopBarHeight();
+    topBarObserver.observe(topBar);
     const host = document.createElement('main');
     host.className = 'feed-host';
     app.appendChild(host);
@@ -563,6 +585,7 @@ function render(): void {
 
 // Without a plan in the URL the page opens on the walkthrough.
 function renderWalkthroughPage(): void {
+  topBarObserver.disconnect();
   app.replaceChildren();
   app.className = 'walk';
   app.appendChild(

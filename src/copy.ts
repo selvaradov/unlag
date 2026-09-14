@@ -198,7 +198,6 @@ export const HEADER = {
   pickDay: 'Choose a day',
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
-  zoomHint: 'Double click to reset',
   days: 'Days',
   editTrip: 'Edit trip',
   newTrip: 'New trip',

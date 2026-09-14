@@ -126,6 +126,42 @@ describe('feed', () => {
     expect(el.querySelector('g.item.active.look-dark')).not.toBeNull();
   });
 
+  it('renders cached plans with the current scale, selection and time', () => {
+    const cachedPlan = generatePlan(input);
+    renderFeed(cachedPlan, opts(cachedPlan.depart - HOUR));
+    for (const pxPerHour of [18, 56, 150]) {
+      for (const width of [390, 760]) {
+        const freshPlan = generatePlan(input);
+        const selected = feedItems(cachedPlan).find((item) => item.look === 'sleep')!;
+        const options = { ...opts(selected.event.start + HOUR), pxPerHour, width, selected };
+        const cached = renderFeed(cachedPlan, options);
+        const fresh = renderFeed(freshPlan, options);
+        expect(cached.outerHTML).toBe(fresh.outerHTML);
+        expect(cached.querySelector('g.item.selected.active.look-sleep')).not.toBeNull();
+      }
+    }
+  });
+
+  it('keeps cached dates and labels separate when the trip changes', () => {
+    const firstPlan = generatePlan(input);
+    const first = renderFeed(firstPlan, opts(firstPlan.depart));
+    const nextInput: PlanInput = {
+      ...input,
+      homeZone: 'America/Los_Angeles',
+      destZone: 'Europe/London',
+      flight: { depart: '2026-10-24T16:00', arrive: '2026-10-25T10:00' },
+      preflightDays: 1,
+      postDays: 2,
+    };
+    const nextPlan = generatePlan(nextInput);
+    const next = renderFeed(nextPlan, opts(nextPlan.depart));
+    expect(next.querySelector('.day-head')?.getAttribute('data-day')).not.toBe(
+      first.querySelector('.day-head')?.getAttribute('data-day'),
+    );
+    expect(next.outerHTML).toBe(renderFeed(generatePlan(nextInput), opts(nextPlan.depart)).outerHTML);
+    expect(renderFeed(firstPlan, opts(firstPlan.depart)).outerHTML).toBe(first.outerHTML);
+  });
+
   it('maps y back to time', () => {
     expect(timeAt(plan, yOf(plan, plan.arrive, px), px)).toBeCloseTo(plan.arrive, 0);
   });
