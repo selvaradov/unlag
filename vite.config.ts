@@ -47,6 +47,8 @@ export default defineConfig({
         ],
       },
       injectManifest: { globPatterns: ['**/*.{js,css,html,svg,woff2,png}'] },
+      // The worker runs in development too, so notifications can be tried on localhost.
+      devOptions: { enabled: true, type: 'module', navigateFallback: 'index.html' },
     }),
   ],
 });

@@ -46,6 +46,8 @@ async function save(sub: PushSubscription, search: string): Promise<void> {
 }
 
 async function subscribe(search: string): Promise<void> {
+  // Without a registered worker the ready promise never settles, so look for one first.
+  if (!(await navigator.serviceWorker.getRegistration())) throw new Error('failed');
   const reg = await navigator.serviceWorker.ready;
   const res = await fetch('/api/push/config');
   if (!res.ok) throw new Error('unavailable');
