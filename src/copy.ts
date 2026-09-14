@@ -271,6 +271,8 @@ export const WALK = {
   next: 'Next',
   finish: 'Make my plan',
   example: 'Or see an example plan',
+  // Development builds only.
+  devFill: 'Fill in the example flight',
 };
 
 export const NOTIFY = {

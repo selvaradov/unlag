@@ -179,6 +179,8 @@ export interface TripFields {
   check: () => PlanInput | null;
   // Airports are required when the plan has none yet.
   hasAirports: () => boolean;
+  // Fills the airports and times, as a lookup does.
+  setFlight: (from: Airport, to: Airport, depart: string, arrive: string) => void;
 }
 
 export function createTripFields(input: PlanInput, onChange: () => void): TripFields {
@@ -218,6 +220,16 @@ export function createTripFields(input: PlanInput, onChange: () => void): TripFi
     }
     lastDepart = depart.value;
   });
+  // Airports and times together, from a lookup or a preset.
+  const setFlight = (from: Airport, to: Airport, dep: string, arr: string) => {
+    home = from;
+    dest = to;
+    homePicker.querySelector('input')!.value = `${from.code} · ${from.city}`;
+    destPicker.querySelector('input')!.value = `${to.code} · ${to.city}`;
+    depart.value = dep;
+    lastDepart = dep;
+    arrive.value = arr;
+  };
   const bed = timeControl(
     'f-bed',
     timeOptions(BEDTIME_RANGE.from, BEDTIME_RANGE.to, input.habitualBed),
@@ -336,13 +348,7 @@ export function createTripFields(input: PlanInput, onChange: () => void): TripFi
     go.disabled = true;
     try {
       const r = await lookupFlight(number.value, date.value);
-      home = r.from;
-      dest = r.to;
-      homePicker.querySelector('input')!.value = `${r.from.code} · ${r.from.city}`;
-      destPicker.querySelector('input')!.value = `${r.to.code} · ${r.to.city}`;
-      depart.value = r.depart;
-      lastDepart = r.depart;
-      arrive.value = r.arrive;
+      setFlight(r.from, r.to, r.depart, r.arrive);
       const dep = DateTime.fromISO(r.depart, { zone: r.from.tz });
       const arr = DateTime.fromISO(r.arrive, { zone: r.to.tz });
       say(
@@ -418,5 +424,6 @@ export function createTripFields(input: PlanInput, onChange: () => void): TripFi
     read,
     check,
     hasAirports,
+    setFlight,
   };
 }

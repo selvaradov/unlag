@@ -1,6 +1,8 @@
 // The first run: three steps that build a plan when the page opens without one.
 import type { PlanInput } from '../algorithm/types.ts';
+import { DEFAULT_INPUT } from '../config.ts';
 import { APP_NAME, CREDIT, TAGLINE, WALK } from '../copy.ts';
+import { findAirport, loadAirports } from '../data/airports.ts';
 import { createTripFields } from './tripFields.ts';
 import { ICONS } from './icons.ts';
 
@@ -51,6 +53,20 @@ export function renderWalkthrough(opts: WalkthroughOptions): HTMLElement {
   };
   const flightPanel = panel(WALK.flightHint, ...fields.flight);
   flightPanel.insertBefore(fields.lookup, flightPanel.querySelector('.grid'));
+  if (import.meta.env.DEV) {
+    // Saves typing a flight on every check of the walkthrough. Not built for production.
+    const fill = document.createElement('button');
+    fill.type = 'button';
+    fill.className = 'text-button dev-fill';
+    fill.textContent = WALK.devFill;
+    fill.addEventListener('click', async () => {
+      const airports = await loadAirports();
+      const from = findAirport(airports, DEFAULT_INPUT.homeAirport);
+      const to = findAirport(airports, DEFAULT_INPUT.destAirport);
+      if (from && to) fields.setFlight(from, to, DEFAULT_INPUT.flight.depart, DEFAULT_INPUT.flight.arrive);
+    });
+    flightPanel.insertBefore(fill, flightPanel.querySelector('.grid'));
+  }
   panel(WALK.sleepHint, ...fields.sleep);
   const optionsPanel = panel(WALK.optionsHint, ...fields.options);
   optionsPanel.appendChild(fields.checks);

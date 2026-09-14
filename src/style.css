@@ -1453,6 +1453,15 @@ dialog.sheet::backdrop {
   color: var(--muted);
 }
 
+/* Development only: fills the example flight on the first step */
+.walkthrough .dev-fill {
+  display: block;
+  margin: -6px 0 10px;
+  padding-left: 0;
+  font-size: 0.8rem;
+  text-decoration: underline dotted;
+}
+
 /* Flight lookup */
 
 .lookup {
