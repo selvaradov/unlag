@@ -919,13 +919,14 @@ html:has(dialog.sheet[open]) {
 }
 
 .float-controls .zoom-group {
-  flex-direction: column;
+  /* Plus sits above minus in the stacked group. */
+  flex-direction: column-reverse;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
 }
 
 .float-controls .zoom-group button + button {
   border-left: 0;
-  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
 }
 
 .float-controls .now-button {
