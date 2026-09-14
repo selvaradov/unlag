@@ -63,10 +63,10 @@ export function eventInstruction(e: PlanEvent, ctx: EventContext): string {
     case 'caffeine':
       return `Last caffeine at ${ctx.endClock}. After that it will cut into tonight's sleep.`;
     case 'caffeineDose':
-      return 'A pill or a coffee. Small dose, you are not a regular user.';
+      return "A pill or a coffee. Small dose, you're not a regular user.";
     case 'melatonin':
       return ctx.direction === 'delay'
-        ? 'Optional, as a sleep aid. The plan does not count on it moving your clock at this hour.'
+        ? "Optional, as a sleep aid. The plan doesn't count on it moving your clock at this hour."
         : 'Timed to move your clock earlier. Expect a little drowsiness.';
     case 'flight':
       return 'In the air.';
@@ -217,15 +217,15 @@ export const SUMMARY = {
 export const METHOD: { title: string; text: string }[] = [
   {
     title: 'One point sets everything',
-    text: 'Your body clock has a low point each night, when core temperature is lowest. Call it Tmin. It sits about three hours before your usual wake time, so for a 07:00 riser it is around 04:00. Every instruction is placed relative to Tmin.',
+    text: "Your body clock has a low point each night, when core temperature is lowest. Call it Tmin. It sits about three hours before your usual wake time, so for a 07:00 riser it's around 04:00. Every instruction is placed relative to Tmin.",
   },
   {
     title: 'Light moves the clock',
-    text: 'Bright light in the hours before Tmin pushes the clock later. Light in the hours after Tmin pushes it earlier. Flying west you need later, so you seek light in the evening, right up to bed, and wear sunglasses in the early morning. The light runs to bedtime on purpose. The hours nearest Tmin move the clock most, and a body being kept up late has no trouble falling asleep. Flying east it is the reverse, and the lights stay low through the evening as well, because light in the hours before bed would push the clock the wrong way. Light eight or more hours from Tmin does little either way.',
+    text: "Bright light in the hours before Tmin pushes the clock later. Light in the hours after Tmin pushes it earlier. Flying west you need later, so you seek light in the evening, right up to bed, and wear sunglasses in the early morning. The light runs to bedtime on purpose. The hours nearest Tmin move the clock most, and a body being kept up late has no trouble falling asleep. Flying east it's the reverse, and the lights stay low through the evening as well, because light in the hours before bed would push the clock the wrong way. Light eight or more hours from Tmin does little either way.",
   },
   {
     title: 'It moves a bit each day',
-    text: 'Left alone after landing, a body clock delays about an hour and a half a day and advances about an hour. Well timed light adds roughly half an hour. Before the flight there is no drift, so the only gain comes from moving bedtime and getting light at the right time, worth up to an hour a day for a delay and half that for an advance, less with room light than daylight.',
+    text: "Left alone after landing, a body clock delays about an hour and a half a day and advances about an hour. Well timed light adds roughly half an hour. Before the flight there's no drift, so the only gain comes from moving bedtime and getting light at the right time, worth up to an hour a day for a delay and half that for an advance, less with room light than daylight.",
   },
   {
     title: 'Sleep is protected',
@@ -233,7 +233,7 @@ export const METHOD: { title: string; text: string }[] = [
   },
   {
     title: 'Caffeine and melatonin',
-    text: 'Caffeine is a wakefulness tool with a cutoff before bed, six hours for regular users and eight for others. Melatonin taken in the biological afternoon advances the clock, so for eastward trips it is timed to do that. For westward trips the shifting dose would fall in the biological morning, which is impractical, so it is offered only as an optional sleep aid. Its effect on the clock depends on the hour by your body clock, which the plan does not track closely, so no shift is counted on it.',
+    text: "Caffeine is a wakefulness tool with a cutoff before bed, six hours for regular users and eight for others. Melatonin taken in the biological afternoon advances the clock, so for eastward trips it's timed to do that. For westward trips the shifting dose would fall in the biological morning, which is impractical, so it's offered only as an optional sleep aid. Its effect on the clock depends on the hour by your body clock, which the plan doesn't track closely, so no shift is counted on it.",
   },
   {
     title: 'What the prediction means',
@@ -250,11 +250,11 @@ export const LOOKUP = {
   found: (from: string, to: string, dep: string, arr: string, length: string, stops: string[]) =>
     `${from} ${dep} to ${to} ${arr}, ${length}${stops.length ? `, via ${stops.join(', ')}` : ''}.`,
   errors: {
-    unavailable: 'Lookup is not set up on this site yet. Enter the flight by hand.',
-    'bad-request': 'That does not look like a flight number. Try the form UA 900.',
+    unavailable: "Lookup isn't set up on this site yet. Enter the flight by hand.",
+    'bad-request': "That doesn't look like a flight number. Try the form UA 900.",
     'not-found': 'No scheduled flight with that number on that date.',
-    'unknown-airport': 'Found the flight, but one of its airports is not in the list. Pick the airports by hand.',
-    failed: 'The lookup service did not answer. Enter the flight by hand.',
+    'unknown-airport': "Found the flight, but one of its airports isn't in the list. Pick the airports by hand.",
+    failed: "The lookup service didn't answer. Enter the flight by hand.",
     'rate-limited': 'Too many lookups in the last hour. Try again later or enter the flight by hand.',
     quota: 'The monthly lookup allowance is used up. Enter the flight by hand.',
     forbidden: 'Lookups only work from this site.',
@@ -283,14 +283,14 @@ export const NOTIFY = {
   onHint: 'This device will be told as each instruction starts. Tap to turn off.',
   justOn: 'Done. The first notification comes with the next instruction.',
   checking: 'Checking…',
-  unsupported: 'This browser cannot show push notifications. The calendar file gives the same alerts.',
+  unsupported: "This browser can't show push notifications. The calendar file gives the same alerts.",
   install: 'On iPhone and iPad, notifications only work once Unlag is on the home screen.',
   addToHome: 'Add to home screen',
   addToHomeSteps: 'In the share sheet, scroll to Add to Home Screen. Then open Unlag from there and tap Notify me.',
   errors: {
     denied: 'Notifications are blocked for this site. Allow them in the browser settings and try again.',
-    unavailable: 'Notifications are not set up on this site yet.',
-    failed: 'Could not turn notifications on. Try again in a moment.',
+    unavailable: "Notifications aren't set up on this site yet.",
+    failed: "Couldn't turn notifications on. Try again in a moment.",
   } as Record<string, string>,
 };
 
