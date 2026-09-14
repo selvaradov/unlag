@@ -126,8 +126,10 @@ finishing an edit updates the stored plan. VAPID keys live in
 `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT`. The service
 worker in `src/sw.ts` shows the notification, opens the plan on tap, reloads
 the page when a new build takes over, and caches the app for offline use. On
-iPhone and iPad the site must be added to the home screen first. The calendar
-file remains the no server alternative.
+iPhone and iPad the site must be added to the home screen first. The installed
+app relaunches at the bare address, so the device remembers the plan last shown
+and reopens on it until its days have ended. The calendar file remains the no
+server alternative.
 
 ## Data
 

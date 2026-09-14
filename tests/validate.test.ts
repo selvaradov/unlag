@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generatePlan } from '../src/algorithm/generate.ts';
 import { clampDays, planProblem } from '../src/algorithm/validate.ts';
-import { hasPlanInUrl, readInput, writeInput } from '../src/ui/state.ts';
+import { hasPlanInUrl, planStillRunning, readInput, writeInput } from '../src/ui/state.ts';
 import { DEFAULT_INPUT } from '../src/config.ts';
 import type { PlanInput } from '../src/algorithm/types.ts';
 
@@ -34,6 +34,24 @@ describe('reading a plan from the URL', () => {
 
   it('keeps a valid plan unchanged', () => {
     expect(readInput(writeInput(base))).toEqual(base);
+  });
+});
+
+describe('planStillRunning', () => {
+  const search = writeInput(base);
+  const arrive = Date.parse('2026-09-16T20:35Z');
+
+  it('is true while the scheduled days are still to come', () => {
+    expect(planStillRunning(search, arrive)).toBe(true);
+  });
+
+  it('is false once the last day has ended', () => {
+    expect(planStillRunning(search, arrive + 30 * 24 * 3_600_000)).toBe(false);
+  });
+
+  it('is false for a query string without a drawable plan', () => {
+    expect(planStillRunning('', arrive)).toBe(false);
+    expect(planStillRunning('?dep=2026-09-16T10%3A35&arr=2026-09-15T13%3A35', arrive)).toBe(false);
   });
 });
 

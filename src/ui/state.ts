@@ -1,4 +1,6 @@
-// The whole plan input lives in the URL query string so a plan is bookmarkable.
+// The whole plan input lives in the URL query string so a plan is bookmarkable. The device also
+// remembers the plan last shown, so the installed app reopens on it rather than at the start page.
+import { generatePlan } from '../algorithm/generate.ts';
 import type { CaffeineHabit, PlanInput } from '../algorithm/types.ts';
 import { LIMITS, clampDays, isClock, isZone, planProblem } from '../algorithm/validate.ts';
 import { DEFAULT_INPUT } from '../config.ts';
@@ -19,6 +21,8 @@ const KEYS = {
   melatonin: 'mel',
   lightBox: 'box',
 } as const;
+
+const LAST_PLAN_KEY = 'unlag-last-plan';
 
 export function defaultInput(): PlanInput {
   return JSON.parse(JSON.stringify(DEFAULT_INPUT));
@@ -91,4 +95,28 @@ export function hasPlanInUrl(search: string): boolean {
   if (!q.has(KEYS.depart) || !q.has(KEYS.arrive)) return false;
   const read = readInput(search);
   return read.flight.depart === q.get(KEYS.depart) && read.flight.arrive === q.get(KEYS.arrive);
+}
+
+// True when the query string carries a plan whose scheduled days have not yet ended.
+export function planStillRunning(search: string, now = Date.now()): boolean {
+  if (!hasPlanInUrl(search)) return false;
+  return generatePlan(readInput(search)).planEnd >= now;
+}
+
+export function rememberPlan(search: string): void {
+  try {
+    localStorage.setItem(LAST_PLAN_KEY, search);
+  } catch {
+    // Storage can be unavailable; the URL still carries the plan.
+  }
+}
+
+// The remembered plan, or null when there is none or its days have ended.
+export function rememberedPlan(): string | null {
+  try {
+    const search = localStorage.getItem(LAST_PLAN_KEY);
+    return search && planStillRunning(search) ? search : null;
+  } catch {
+    return null;
+  }
 }

@@ -20,7 +20,7 @@ import {
 import { dayLabel, zoneAbbr, zoneAt } from './ui/format.ts';
 import { renderHeadline } from './ui/headline.ts';
 import { ICONS } from './ui/icons.ts';
-import { defaultInput, hasPlanInUrl, readInput, writeInput } from './ui/state.ts';
+import { defaultInput, hasPlanInUrl, readInput, rememberPlan, rememberedPlan, writeInput } from './ui/state.ts';
 import { renderWalkthrough } from './ui/walkthrough.ts';
 import { loadAirports } from './data/airports.ts';
 import { syncSubscription } from './ui/notify.ts';
@@ -42,8 +42,14 @@ const MEDIUM = window.matchMedia('(min-width: 900px)');
 const WIDE = window.matchMedia('(min-width: 1200px)');
 
 const app = document.getElementById('app')!;
+// The installed app relaunches at the bare address, so the plan last shown on this device comes back.
+if (!hasPlanInUrl(location.search)) {
+  const remembered = rememberedPlan();
+  if (remembered) history.replaceState(null, '', remembered);
+}
 let input: PlanInput = readInput(location.search);
 let plan: Plan = generatePlan(input);
+if (hasPlanInUrl(location.search)) rememberPlan(writeInput(input));
 let selected: FeedItem | null = null;
 let editing = false;
 // Inputs as they were when editing began, restored by Cancel.
@@ -284,6 +290,7 @@ function applyInput(next: PlanInput, mode: 'replace' | 'push' = 'replace'): void
   plan = generatePlan(input);
   if (mode === 'push') history.pushState(null, '', writeInput(input));
   else history.replaceState(null, '', writeInput(input));
+  rememberPlan(writeInput(input));
   selected = null;
 }
 
@@ -592,6 +599,7 @@ window.addEventListener('popstate', () => {
   if (hasPlanInUrl(location.search)) {
     input = readInput(location.search);
     plan = generatePlan(input);
+    rememberPlan(writeInput(input));
     render();
     scrollToNow(false);
   } else {
@@ -599,7 +607,8 @@ window.addEventListener('popstate', () => {
   }
 });
 
-// A new trip is one click from any plan: clear the URL and open the walkthrough.
+// A new trip is one click from any plan: clear the URL and open the walkthrough. The old plan stays
+// remembered until the new one is finished.
 function startNewTrip(): void {
   history.pushState(null, '', location.pathname);
   renderWalkthroughPage();
