@@ -11,6 +11,7 @@ const { values } = parseArgs({
     chromium: { type: 'string' },
     webkit: { type: 'string' },
     profile: { type: 'boolean', default: false },
+    touch: { type: 'boolean', default: false },
   },
 });
 const engines = await import(values.playwright);
@@ -26,6 +27,10 @@ for (const name of ['webkit', 'chromium']) {
       serviceWorkers: 'block',
     });
     const errors = [];
+    if (values.touch)
+      await page.addInitScript(() => {
+        window.forceTouchZoom = true;
+      });
     page.on('pageerror', (error) => errors.push(error.message));
     if (values.profile) {
       await page.route('**/src/ui/dayList.ts*', async (route) => {
@@ -210,7 +215,7 @@ for (const name of ['webkit', 'chromium']) {
         });
       };
       const scale = () => Number(window.localStorage.getItem('unlag-px-per-hour')) || DEFAULT_PX_PER_HOUR;
-      const gesture = 'GestureEvent' in window;
+      const gesture = 'GestureEvent' in window && !window.forceTouchZoom;
       const nodes = document.querySelectorAll('.rail *').length;
       const height = document.querySelector('.feed').offsetHeight;
       for (const position of [0.5, 0.95]) {
@@ -334,7 +339,7 @@ for (const name of ['webkit', 'chromium']) {
       const scale = () => (parseFloat(feed.style.height) - FEED_PAD_TOP) / hours;
       const near = (a, b) => Math.abs(a - b) < 0.001;
       const wait = () => new Promise((resolve) => requestAnimationFrame(resolve));
-      const gesture = 'GestureEvent' in window;
+      const gesture = 'GestureEvent' in window && !window.forceTouchZoom;
       const send = (kind, factor = 1, centre = 400, pair = [0, 1]) => {
         const type =
           kind === 'cancel'
@@ -399,6 +404,51 @@ for (const name of ['webkit', 'chromium']) {
       return { maximum, minimum, noLateFrame, clampedPan, invalidScale, restart, changedPair };
     });
     assert.ok(Object.values(edges).every(Boolean), `Gesture edge cases must pass ${JSON.stringify(edges)}`);
+    const ownership = await page.evaluate(async () => {
+      const target = document.querySelector('.feed text.hour-label');
+      const { MIN_PX_PER_HOUR } = await import('/src/ui/feed.ts');
+      const scale = () => Number(window.localStorage.getItem('unlag-px-per-hour'));
+      const start = scale();
+      const touch = (type, points) => {
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        Object.defineProperty(event, 'touches', {
+          value: points.map(([identifier, clientY]) => ({ identifier, clientY, clientX: 195 })),
+        });
+        target.dispatchEvent(event);
+        return event.defaultPrevented;
+      };
+      const gesture = (type) => {
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        Object.assign(event, { scale: 100, clientY: 0 });
+        target.dispatchEvent(event);
+      };
+      const singleStart = touch('touchstart', [[0, 350]]);
+      gesture('gesturestart');
+      const pairStart = touch('touchstart', [
+        [0, 350],
+        [1, 450],
+      ]);
+      gesture('gesturechange');
+      const pairMove = touch('touchmove', [
+        [0, 355],
+        [1, 405],
+      ]);
+      gesture('gestureend');
+      touch('touchend', [[0, 355]]);
+      const released = scale();
+      const singleMove = touch('touchmove', [[0, 300]]);
+      gesture('gesturechange');
+      touch('touchend', []);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return {
+        nativeSingleFinger: !singleStart && !singleMove,
+        cancelledPinch: pairStart && pairMove,
+        touchScale: Math.abs(released - Math.max(MIN_PX_PER_HOUR, start * 0.5)) < 0.001,
+        noLateChange: scale() === released,
+      };
+    });
+    if (values.touch)
+      assert.ok(Object.values(ownership).every(Boolean), `Touch ownership must pass ${JSON.stringify(ownership)}`);
     results.push({
       browser: name,
       cpuThrottle: name === 'chromium' ? 4 : 1,
@@ -406,6 +456,7 @@ for (const name of ['webkit', 'chromium']) {
       profile,
       scrollProfile,
       edges,
+      ownership,
     });
   } finally {
     await browser.close();

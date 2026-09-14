@@ -60,5 +60,39 @@ Optional `--webkit <executable>` and `--chromium <executable>` arguments select 
 Keep the benchmark script identical for both revisions. The JSON output includes individual
 samples, phase measurements and behaviour results.
 
-Desktop WebKit is not the installed iOS runtime. The phone still needs a check for interaction
-feel and painting; these timings do not establish smoothness or a frame rate on iOS.
+## Touch input and scrolling
+
+Phone pinches use the distance and midpoint of the actual touches. Two-finger touchstart and
+touchmove cancel native scrolling. GestureEvent input is ignored while fingers remain down;
+it is available for trackpads. A fresh one-finger gesture retains native scrolling.
+Safari sends both touch and gesture events, with separate default behaviour for scrolling and
+browser zoom ([Apple event documentation](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/HandlingEvents/HandlingEvents.html)).
+
+`analysis/pinch-input.mjs --check` uses Chromium's browser input protocol to deliver touches.
+It repeats the same input with accompanying simulated Safari gesture events whose centre
+deliberately disagrees with the touch midpoint. This checks which input controls the anchor;
+it does not claim to reproduce the coordinates supplied by an iPhone.
+
+Against `abc36a7`, the mixed-input case has a maximum anchor error of 399.8 px and uncancelled
+pinch touch events. With touch ownership, maximum error is 0.4 px, pinch events are cancelled,
+and release drift is zero. Fresh one-finger scrolling passes in both cases. These are controlled
+regression measurements, not measurements of the reported installed-iOS jitter.
+
+The same layout benchmark measures median input-to-layout latency of 51 ms in WebKit and
+52.0 ms in Chromium with 4× CPU throttle for `abc36a7`. With touch ownership, the corresponding
+values are 52.5 ms and 53.5 ms. Explicit touch mode measures 52 ms and 56.9 ms. The renderer
+is unchanged; these single-run timings show no speed improvement and do not measure painting.
+
+```sh
+node analysis/pinch-input.mjs --check --playwright <module-path> --chromium <executable>
+node analysis/zoom-benchmark.mjs --touch --profile --playwright <module-path>
+```
+
+The input diagnostic retains at most 500 entries, including touch and gesture coordinates,
+requested and actual scroll position, document height and resize events. The full benchmark's
+`--touch` mode checks the touch path in both engines, including mixed event ordering and the
+transition from two fingers to one.
+
+Installed-iOS live pinching has a reported jitter regression. Touch ownership addresses a
+confirmed input-handling gap, but the exact device-level cause and the correction's feel still
+require an on-device check. Desktop timings do not establish smoothness or a frame rate on iOS.

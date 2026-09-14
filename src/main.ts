@@ -152,6 +152,7 @@ function attachZoom(feed: HTMLElement): void {
   let anchorTime = 0;
   let anchorY = 0;
   let fingers = '';
+  let touching = false;
   let pending = 0;
   const ids = (list: TouchList) =>
     [...list]
@@ -191,21 +192,25 @@ function attachZoom(feed: HTMLElement): void {
   if ('GestureEvent' in window) {
     feed.addEventListener('gesturestart', (ev) => {
       ev.preventDefault();
+      if (touching) return;
       const g = ev as unknown as { clientY: number };
       begin(g, g, 1);
     });
     feed.addEventListener('gesturechange', (ev) => {
       ev.preventDefault();
+      if (touching) return;
       const g = ev as unknown as { scale: number; clientY: number };
       if (Number.isFinite(g.clientY)) anchorY = g.clientY;
       change(g.scale);
     });
     feed.addEventListener('gestureend', (ev) => {
       ev.preventDefault();
+      if (touching) return;
       finish();
     });
-    feed.addEventListener('touchcancel', finish);
-  } else {
+  }
+  // Touch coordinates own phone pinches; GestureEvent remains for trackpads.
+  {
     const distance = (a: Touch, b: Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
     const startPair = (touches: TouchList) => {
       fingers = ids(touches);
@@ -214,10 +219,13 @@ function attachZoom(feed: HTMLElement): void {
     feed.addEventListener(
       'touchstart',
       (ev) => {
-        if (ev.touches.length === 2) startPair(ev.touches);
-        else if (ev.touches.length > 2) finish();
+        touching = ev.touches.length > 0;
+        if (ev.touches.length === 2) {
+          ev.preventDefault();
+          startPair(ev.touches);
+        } else if (ev.touches.length > 2) finish();
       },
-      { passive: true },
+      { passive: false },
     );
     feed.addEventListener(
       'touchmove',
@@ -234,10 +242,14 @@ function attachZoom(feed: HTMLElement): void {
       { passive: false },
     );
     feed.addEventListener('touchend', (ev) => {
+      touching = ev.touches.length > 0;
       if (ev.touches.length === 2) startPair(ev.touches);
       else finish();
     });
-    feed.addEventListener('touchcancel', finish);
+    feed.addEventListener('touchcancel', () => {
+      touching = false;
+      finish();
+    });
   }
   feed.addEventListener(
     'wheel',
