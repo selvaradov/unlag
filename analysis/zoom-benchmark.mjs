@@ -10,6 +10,7 @@ const { values } = parseArgs({
     playwright: { type: 'string', default: 'playwright' },
     chromium: { type: 'string' },
     webkit: { type: 'string' },
+    profile: { type: 'boolean', default: false },
   },
 });
 const engines = await import(values.playwright);
@@ -26,6 +27,36 @@ for (const name of ['webkit', 'chromium']) {
     });
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    if (values.profile) {
+      await page.route('**/src/ui/feed.ts*', async (route) => {
+        const response = await route.fetch();
+        let body = await response.text();
+        body = body.replace(
+          /function renderFeed\(plan, opts, existing\) \{/,
+          '$&\nconst profileStart = performance.now();',
+        );
+        body = body.replace(
+          /root.innerHTML = svg.join\((['"])\1\);/,
+          'const profileBuilt = performance.now();\n$&\nconst profileParsed = performance.now();',
+        );
+        body = body.replace(
+          'const feed = existing ?? root;',
+          'const profilePatch = performance.now();\nconst feed = existing ?? root;',
+        );
+        body = body.replace(
+          'return feed;',
+          `
+          (window.zoomProfile ??= []).push({
+            buildMs: profileBuilt - profileStart,
+            parseMs: profileParsed - profileBuilt,
+            anchorsMs: profilePatch - profileParsed,
+            patchMs: performance.now() - profilePatch,
+          });
+          return feed;`,
+        );
+        await route.fulfill({ response, body });
+      });
+    }
     await page.goto(values.url);
     await page.evaluate(async () => {
       const { defaultInput, writeInput } = await import('/src/ui/state.ts');
@@ -95,13 +126,18 @@ for (const name of ['webkit', 'chromium']) {
     await page.waitForSelector('.feed');
     await page.evaluate(() => document.fonts.ready);
     await checkHeader();
+    await page.evaluate(() => {
+      window.zoomProfile = [];
+    });
     if (name === 'chromium') {
       const cdp = await page.context().newCDPSession(page);
       await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
     }
     const measurements = await page.evaluate(async () => {
-      const { DEFAULT_PX_PER_HOUR, MIN_PX_PER_HOUR, MAX_PX_PER_HOUR } = await import('/src/ui/feed.ts');
+      const { DEFAULT_PX_PER_HOUR, MIN_PX_PER_HOUR, MAX_PX_PER_HOUR, FEED_PAD_TOP, metrics } =
+        await import('/src/ui/feed.ts');
       const rows = [];
+      const layouts = [];
       const frames = [];
       const wait = () => new Promise((resolve) => requestAnimationFrame(resolve));
       const sample = () => {
@@ -121,7 +157,11 @@ for (const name of ['webkit', 'chromium']) {
           await wait();
           await wait();
           const feed = document.querySelector('.feed');
+          const target = feed.querySelector('text.hour-label');
+          const rail = feed.querySelector('svg.rail');
           const start = scale();
+          const hours = (parseFloat(feed.style.height) - FEED_PAD_TOP) / start;
+          const anchor = (400 - feed.getBoundingClientRect().top - FEED_PAD_TOP) / start;
           const emit = (kind, factor) => {
             const type = gesture ? `gesture${kind}` : `touch${{ start: 'start', change: 'move', end: 'end' }[kind]}`;
             const event = new Event(type, { bubbles: true, cancelable: true });
@@ -137,12 +177,41 @@ for (const name of ['webkit', 'chromium']) {
                       ],
               });
             }
-            feed.dispatchEvent(event);
+            target.dispatchEvent(event);
           };
           emit('start', 1);
           for (let step = 1; step <= 4; step++) {
-            emit('change', 1 + ((ratio - 1) * step) / 4);
+            const factor = 1 + ((ratio - 1) * step) / 4;
+            const began = performance.now();
+            emit('change', factor);
             await wait();
+            const frameMs = performance.now() - began;
+            const expected = Math.min(MAX_PX_PER_HOUR, Math.max(MIN_PX_PER_HOUR, start * factor));
+            const top = feed.getBoundingClientRect().top + window.scrollY;
+            const scroll = Math.min(
+              document.documentElement.scrollHeight - window.innerHeight,
+              Math.max(0, top + FEED_PAD_TOP + anchor * expected - 400),
+            );
+            const matrix = rail.getScreenCTM();
+            layouts.push({
+              position,
+              ratio,
+              expected,
+              scroll,
+              actualScroll: window.scrollY,
+              frameMs,
+              scaleError: Math.abs((parseFloat(feed.style.height) - FEED_PAD_TOP) / hours - expected),
+              fontError: Math.abs(
+                parseFloat(rail.style.getPropertyValue('--feed-font')) -
+                  metrics(expected, rail.width.baseVal.value).font,
+              ),
+              anchorError: Math.abs(window.scrollY - scroll),
+              distortion: Math.abs(matrix.a - matrix.d),
+              attached:
+                target.isConnected &&
+                feed === document.querySelector('.feed') &&
+                rail === feed.querySelector('svg.rail'),
+            });
             sample();
           }
           const began = performance.now();
@@ -161,12 +230,21 @@ for (const name of ['webkit', 'chromium']) {
           });
         }
       }
-      return { nodes, height, rows, badFrames: frames.filter((frame) => frame.top !== 0 || !frame.hit) };
+      return { nodes, height, rows, layouts, badFrames: frames.filter((frame) => frame.top !== 0 || !frame.hit) };
     });
     assert.deepEqual(measurements.badFrames, []);
+    for (const layout of measurements.layouts) {
+      assert.ok(layout.attached);
+      assert.ok(layout.scaleError < 0.001, `The hour scale must update during the pinch ${JSON.stringify(layout)}`);
+      assert.ok(layout.fontError < 0.000001, 'Text must use the current layout font size');
+      assert.ok(layout.anchorError <= 1, `The time under the fingers must stay anchored ${JSON.stringify(layout)}`);
+      assert.equal(layout.distortion, 0, 'Text must not be stretched');
+    }
     for (const row of measurements.rows) assert.ok(Math.abs(row.expected - row.actual) < 0.000001);
     assert.deepEqual(errors, []);
-    results.push({ browser: name, cpuThrottle: name === 'chromium' ? 4 : 1, ...measurements });
+    const profile = values.profile ? await page.evaluate(() => window.zoomProfile) : undefined;
+    if (values.profile) assert.ok(profile.length > 0, 'Renderer profiling must record samples');
+    results.push({ browser: name, cpuThrottle: name === 'chromium' ? 4 : 1, ...measurements, profile });
   } finally {
     await browser.close();
   }

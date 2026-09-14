@@ -125,13 +125,14 @@ function timeAtFocus(): number {
 
 // Zoom. The hour scale changes around an anchor so the time under the fingers stays put.
 
-function setScale(next: number, anchorTime: number, anchorClientY: number): void {
+function setScale(next: number, anchorTime: number, anchorClientY: number, persist = true): void {
   const clamped = Math.min(MAX_PX_PER_HOUR, Math.max(MIN_PX_PER_HOUR, next));
-  if (clamped === pxPerHour) return;
-  pxPerHour = clamped;
-  saveScale();
-  replaceFeed();
-  const top = feedTop() + yOf(plan, anchorTime, pxPerHour) - anchorClientY;
+  const top = feedTop() + yOf(plan, anchorTime, clamped) - anchorClientY;
+  if (clamped !== pxPerHour) {
+    pxPerHour = clamped;
+    refreshFeed();
+    if (persist) saveScale();
+  }
   window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
 }
 
@@ -139,8 +140,7 @@ function zoomBy(factor: number): void {
   setScale(pxPerHour * factor, timeAtFocus(), focusLine());
 }
 
-// Pinching stretches the feed with a transform while the fingers are down and rebuilds it once when
-// they lift. A rebuild parses the whole plan as SVG, which is too slow to repeat on every frame.
+// Pinches share one layout update per frame and keep the drawing's touch targets attached.
 function attachZoom(feed: HTMLElement): void {
   let active = false;
   let startDist = 0;
@@ -148,61 +148,71 @@ function attachZoom(feed: HTMLElement): void {
   let ratio = 1;
   let anchorTime = 0;
   let anchorY = 0;
-  let anchorStartY = 0;
   let fingers = '';
-  let pending = false;
-  const ids = (list: TouchList) => [...list].map((t) => t.identifier).join(',');
-  const targetPx = () => Math.min(MAX_PX_PER_HOUR, Math.max(MIN_PX_PER_HOUR, startPx * ratio));
-  const begin = (a: { clientX: number; clientY: number }, b: { clientX: number; clientY: number }, dist: number) => {
-    active = true;
-    startDist = dist;
-    startPx = pxPerHour;
-    ratio = 1;
-    anchorY = anchorStartY = (a.clientY + b.clientY) / 2;
-    const feedY = anchorY + window.scrollY - feedTop();
-    anchorTime = timeAt(plan, feedY, pxPerHour);
-    feed.style.transformOrigin = `0 ${feedY}px`;
+  let pending = 0;
+  const ids = (list: TouchList) =>
+    [...list]
+      .map((t) => t.identifier)
+      .sort()
+      .join(',');
+  const apply = () => {
+    pending = 0;
+    if (active && feed.isConnected) setScale(startPx * ratio, anchorTime, anchorY, false);
   };
-  const preview = (r: number) => {
-    ratio = r;
-    if (pending) return;
-    pending = true;
-    requestAnimationFrame(() => {
-      pending = false;
-      if (!active) return;
-      feed.style.transform = `translateY(${anchorY - anchorStartY}px) scaleY(${targetPx() / startPx})`;
-    });
+  const flush = () => {
+    if (!pending) return;
+    cancelAnimationFrame(pending);
+    apply();
   };
   const finish = () => {
     if (!active) return;
+    flush();
     active = false;
-    feed.style.transform = '';
-    feed.style.transformOrigin = '';
-    setScale(targetPx(), anchorTime, anchorY);
+    saveScale();
+  };
+  const begin = (a: { clientY: number }, b: { clientY: number }, distance: number) => {
+    finish();
+    if (!Number.isFinite(distance) || distance <= 0) return;
+    active = true;
+    startDist = distance;
+    startPx = pxPerHour;
+    ratio = 1;
+    anchorY = (a.clientY + b.clientY) / 2;
+    anchorTime = timeAt(plan, anchorY + window.scrollY - feedTop(), pxPerHour);
+  };
+  const change = (scale: number) => {
+    if (!active || !Number.isFinite(scale) || scale <= 0) return;
+    ratio = scale;
+    if (!pending) pending = requestAnimationFrame(apply);
   };
   if ('GestureEvent' in window) {
-    // iOS reports pinches as gesture events with a running scale; stopping them also stops the page zooming.
     feed.addEventListener('gesturestart', (ev) => {
       ev.preventDefault();
-      const g = ev as unknown as { clientX: number; clientY: number };
+      const g = ev as unknown as { clientY: number };
       begin(g, g, 1);
     });
     feed.addEventListener('gesturechange', (ev) => {
       ev.preventDefault();
-      preview((ev as unknown as { scale: number }).scale);
+      const g = ev as unknown as { scale: number; clientY: number };
+      if (Number.isFinite(g.clientY)) anchorY = g.clientY;
+      change(g.scale);
     });
     feed.addEventListener('gestureend', (ev) => {
       ev.preventDefault();
       finish();
     });
+    feed.addEventListener('touchcancel', finish);
   } else {
-    const dist = (a: Touch, b: Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    const distance = (a: Touch, b: Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    const startPair = (touches: TouchList) => {
+      fingers = ids(touches);
+      begin(touches[0], touches[1], distance(touches[0], touches[1]));
+    };
     feed.addEventListener(
       'touchstart',
       (ev) => {
-        if (ev.touches.length !== 2) return;
-        fingers = ids(ev.touches);
-        begin(ev.touches[0], ev.touches[1], dist(ev.touches[0], ev.touches[1]));
+        if (ev.touches.length === 2) startPair(ev.touches);
+        else if (ev.touches.length > 2) finish();
       },
       { passive: true },
     );
@@ -210,20 +220,20 @@ function attachZoom(feed: HTMLElement): void {
       'touchmove',
       (ev) => {
         if (!active || ev.touches.length !== 2) return;
-        const [a, b] = [ev.touches[0], ev.touches[1]];
-        // A changed pair of fingers carries on from the current stretch rather than jumping.
+        ev.preventDefault();
         if (ids(ev.touches) !== fingers) {
-          fingers = ids(ev.touches);
-          startDist = dist(a, b) / ratio;
+          startPair(ev.touches);
           return;
         }
-        ev.preventDefault();
-        anchorY = (a.clientY + b.clientY) / 2;
-        preview(dist(a, b) / startDist);
+        anchorY = (ev.touches[0].clientY + ev.touches[1].clientY) / 2;
+        change(distance(ev.touches[0], ev.touches[1]) / startDist);
       },
       { passive: false },
     );
-    feed.addEventListener('touchend', finish);
+    feed.addEventListener('touchend', (ev) => {
+      if (ev.touches.length === 2) startPair(ev.touches);
+      else finish();
+    });
     feed.addEventListener('touchcancel', finish);
   }
   feed.addEventListener(
@@ -231,6 +241,7 @@ function attachZoom(feed: HTMLElement): void {
     (ev) => {
       if (!ev.ctrlKey) return;
       ev.preventDefault();
+      finish();
       const t = timeAt(plan, ev.clientY + window.scrollY - feedTop(), pxPerHour);
       setScale(pxPerHour * Math.exp(-ev.deltaY / 300), t, ev.clientY);
     },
@@ -253,27 +264,31 @@ function hideLabelsUnderNow(): void {
   }
 }
 
-function buildFeed(): HTMLElement {
+function buildFeed(existing?: HTMLElement): HTMLElement {
   const host = document.querySelector<HTMLElement>('.feed-host');
   const width = host ? host.clientWidth : Math.min(window.innerWidth, 640);
-  const feed = renderFeed(plan, {
-    pxPerHour,
-    width,
-    now: Date.now(),
-    selected,
-    onSelect: (item) => {
-      selected = item;
-      document.querySelector('.headline')?.replaceWith(renderHeadline(plan, Date.now(), selected, clearSelection));
+  const feed = renderFeed(
+    plan,
+    {
+      pxPerHour,
+      width,
+      now: Date.now(),
+      selected,
+      onSelect: (item) => {
+        selected = item;
+        document.querySelector('.headline')?.replaceWith(renderHeadline(plan, Date.now(), selected, clearSelection));
+      },
     },
-  });
-  attachZoom(feed);
+    existing,
+  );
+  if (!existing) attachZoom(feed);
   requestAnimationFrame(hideLabelsUnderNow);
   return feed;
 }
 
-function replaceFeed(): void {
+function refreshFeed(): void {
   const old = feedEl();
-  if (old) old.replaceWith(buildFeed());
+  if (old) buildFeed(old);
 }
 
 // Pieces shared by the layouts.
@@ -655,7 +670,7 @@ window.addEventListener('resize', () => {
   window.clearTimeout(resizeTimer);
   resizeTimer = window.setTimeout(() => {
     const t = timeAtFocus();
-    replaceFeed();
+    refreshFeed();
     scrollToTime(t, false);
   }, 150);
 });
@@ -687,7 +702,7 @@ function tick(): void {
   const crossed = (t: number) => since < t && t <= now;
   const edges = [axisStart(plan), plan.planEnd, ...plan.events.flatMap((e) => [e.start, e.end])];
   if (edges.some(crossed)) {
-    replaceFeed();
+    refreshFeed();
   } else {
     const line = document.getElementById('now');
     if (line) {

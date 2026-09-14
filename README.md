@@ -84,7 +84,7 @@ the page opens on a three step walkthrough.
 Layouts: under 900 px a fixed header with day and Trip sheets, zoom and Now
 floating; 900 to 1199 px a side panel with Plan and Trip tabs; from 1200 px
 three columns with the day list left and trip card right. Days show instructions
-on a noon to noon strip. Pinch previews stretch the feed and relayout on release;
+on a noon to noon strip. Pinch zoom updates text, widths and spacing during the gesture;
 ctrl and wheel or repeated magnifier presses zoom. The scale is remembered.
 
 Theme: paper and ink, IBM Plex Sans and Mono self hosted from the Fontsource

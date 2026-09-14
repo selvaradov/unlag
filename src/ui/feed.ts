@@ -3,6 +3,7 @@
 // kinks the line; caffeine and melatonin run on a thin line to the right. Labels are laid
 // out in a separate pass so they never overlap.
 import { DateTime } from 'luxon';
+import { updateElement } from './dom.ts';
 import type { Plan, PlanEvent } from '../algorithm/types.ts';
 import { HOUR, MINUTE } from '../algorithm/time.ts';
 import { FEED, eventTitle } from '../copy.ts';
@@ -277,10 +278,10 @@ function layout(blocks: Block[]): string {
     for (const b of blocks.filter((x) => x.lane === lane).sort((a, c) => a.top - c.top)) {
       const top = Math.max(b.top, bottom + LABEL_GAP_Y);
       let used = 0;
-      for (const line of b.lines) {
+      for (const [index, line] of b.lines.entries()) {
         if (top + used + line.h > b.maxY) break;
         out.push(
-          `<text class="${line.cls}" data-i="${b.item}" x="${b.x}" y="${top + used + line.h - 4}">${line.text}</text>`,
+          `<text data-key="${b.item}-${line.cls}-${index}" class="${line.cls}" data-i="${b.item}" x="${b.x}" y="${top + used + line.h - 4}">${line.text}</text>`,
         );
         used += line.h;
       }
@@ -298,7 +299,9 @@ export interface FeedOptions {
   onSelect: (item: FeedItem | null) => void;
 }
 
-export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
+const feedState = new WeakMap<HTMLElement, { items: FeedItem[]; onSelect: FeedOptions['onSelect'] }>();
+
+export function renderFeed(plan: Plan, opts: FeedOptions, existing?: HTMLElement): HTMLElement {
   const { pxPerHour: px, width, now } = opts;
   const y = (t: number) => yOf(plan, t, px);
   const height = y(plan.planEnd) + px;
@@ -322,7 +325,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
 
   const svg: string[] = [];
   svg.push(
-    `<svg class="rail" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="--feed-font:${m.font}px;--feed-meta:${m.meta}px" xmlns="http://www.w3.org/2000/svg">`,
+    `<svg data-key="rail" class="rail" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="--feed-font:${m.font}px;--feed-meta:${m.meta}px" xmlns="http://www.w3.org/2000/svg">`,
   );
 
   // Hour grid and day labels.
@@ -330,22 +333,26 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
   for (const mk of marks) {
     const yy = y(mk.t);
     if (mk.dayStart) {
-      svg.push(`<line class="hour-line day-line" x1="${LEFT_COL}" x2="${width - rightCol}" y1="${yy}" y2="${yy}"/>`);
-      svg.push(`<text class="day-label" x="${width - rightCol}" y="${yy - 6}" text-anchor="end">${mk.dayLabel}</text>`);
+      svg.push(
+        `<line data-key="day-line-${mk.t}" class="hour-line day-line" x1="${LEFT_COL}" x2="${width - rightCol}" y1="${yy}" y2="${yy}"/>`,
+      );
+      svg.push(
+        `<text data-key="day-${mk.t}" class="day-label" x="${width - rightCol}" y="${yy - 6}" text-anchor="end">${mk.dayLabel}</text>`,
+      );
       continue;
     }
     const labelled = mk.hour % step === 0;
     svg.push(
-      `<line class="hour-line${labelled ? '' : ' minor'}" x1="${LEFT_COL}" x2="${width - rightCol}" y1="${yy}" y2="${yy}"/>`,
+      `<line data-key="hour-line-${mk.t}" class="hour-line${labelled ? '' : ' minor'}" x1="${LEFT_COL}" x2="${width - rightCol}" y1="${yy}" y2="${yy}"/>`,
     );
     if (labelled) {
       // Labels carry their y so the now line can hide the one it would cover.
       svg.push(
-        `<text class="hour-label" data-y="${yy}" x="${LEFT_COL - 8}" y="${yy + 4}" text-anchor="end">${mk.label}</text>`,
+        `<text data-key="hour-${mk.t}" class="hour-label" data-y="${yy}" x="${LEFT_COL - 8}" y="${yy + 4}" text-anchor="end">${mk.label}</text>`,
       );
       if (!narrow)
         svg.push(
-          `<text class="hour-label other" data-y="${yy}" x="${width - rightCol + 8}" y="${yy + 4}">${mk.other}</text>`,
+          `<text data-key="other-${mk.t}" class="hour-label other" data-y="${yy}" x="${width - rightCol + 8}" y="${yy + 4}">${mk.other}</text>`,
         );
     }
   }
@@ -407,10 +414,11 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     const sel = key === selectedKey ? ' selected' : '';
     const active = !isPoint(e) && e.start <= now && now < e.end;
     const label = labels[i];
-    const g = (body: string, cls: string) =>
+    const g = (body: string, cls: string) => {
       svg.push(
-        `<g class="item ${cls}${sel}${active ? ' active' : ''}" data-i="${i}" tabindex="0" role="button"><title>${label.title}</title>${body}</g>`,
+        `<g data-key="item-${i}" class="item ${cls}${sel}${active ? ' active' : ''}" data-i="${i}" tabindex="0" role="button"><title>${label.title}</title>${body}</g>`,
       );
+    };
 
     switch (item.look) {
       case 'sleep':
@@ -528,31 +536,9 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
       }
     }
   }
-  svg.push(`<g class="labels">${layout(blocks)}</g>`);
+  svg.push(`<g data-key="labels" class="labels">${layout(blocks)}</g>`);
   svg.push('</svg>');
   root.innerHTML = svg.join('');
-
-  const rail = root.querySelector('svg')!;
-  rail.addEventListener('click', (ev) => {
-    const hit = (ev.target as Element).closest<SVGElement>('[data-i]');
-    if (!hit) return;
-    const i = Number(hit.dataset.i);
-    const g = rail.querySelector<SVGGElement>(`g.item[data-i="${i}"]`)!;
-    const already = g.classList.contains('selected');
-    rail.querySelectorAll('g.item.selected').forEach((s) => s.classList.remove('selected'));
-    if (already) {
-      opts.onSelect(null);
-    } else {
-      g.classList.add('selected');
-      opts.onSelect(items[i]);
-    }
-  });
-  rail.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter' || ev.key === ' ') {
-      (ev.target as HTMLElement).click();
-      ev.preventDefault();
-    }
-  });
 
   // Invisible anchors for scrolling to a day, and the now line.
   for (const mk of marks) {
@@ -560,6 +546,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     const anchor = el('div', 'day-head');
     anchor.style.top = `${y(mk.t)}px`;
     anchor.dataset.day = mk.day;
+    anchor.dataset.key = `day-${mk.t}`;
     root.appendChild(anchor);
   }
   if (now >= axisStart(plan) && now <= plan.planEnd) {
@@ -567,7 +554,30 @@ export function renderFeed(plan: Plan, opts: FeedOptions): HTMLElement {
     nowLine.style.top = `${y(now)}px`;
     nowLine.style.right = `${rightCol}px`;
     nowLine.id = 'now';
+    nowLine.dataset.key = 'now';
     root.appendChild(nowLine);
   }
-  return root;
+  const feed = existing ?? root;
+  if (existing) updateElement(existing, root);
+  feedState.set(feed, { items, onSelect: opts.onSelect });
+  if (!existing) {
+    feed.addEventListener('click', (ev) => {
+      const hit = (ev.target as Element).closest<SVGElement>('[data-i]');
+      if (!hit) return;
+      const state = feedState.get(feed)!;
+      const i = Number(hit.dataset.i);
+      const g = feed.querySelector<SVGGElement>(`g.item[data-i="${i}"]`)!;
+      const already = g.classList.contains('selected');
+      feed.querySelectorAll('g.item.selected').forEach((item) => item.classList.remove('selected'));
+      if (!already) g.classList.add('selected');
+      state.onSelect(already ? null : state.items[i]);
+    });
+    feed.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        (ev.target as Element).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        ev.preventDefault();
+      }
+    });
+  }
+  return feed;
 }

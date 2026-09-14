@@ -162,6 +162,52 @@ describe('feed', () => {
     expect(renderFeed(firstPlan, opts(firstPlan.depart)).outerHTML).toBe(first.outerHTML);
   });
 
+  it('keeps touch targets attached while updating the drawing to each zoom', () => {
+    const options = opts(plan.depart);
+    const feed = renderFeed(plan, options);
+    document.body.appendChild(feed);
+    const targets = [...feed.querySelectorAll('svg.rail, g.item, text.hour-label, g.labels text')];
+    const drawing = (root: HTMLElement) => {
+      const copy = root.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll<HTMLElement | SVGElement>('[style]').forEach((element) => {
+        if (element.style.display === 'none') element.remove();
+      });
+      return [...copy.querySelectorAll('*')]
+        .map((element) => ({
+          tag: element.tagName,
+          attributes: [...element.attributes].map((attribute) => [attribute.name, attribute.value]).sort(),
+          text: element.children.length ? '' : element.textContent,
+        }))
+        .map((element) => JSON.stringify(element))
+        .sort();
+    };
+    for (const pxPerHour of [18, 150, 35, 56]) {
+      const next = { ...options, pxPerHour };
+      expect(renderFeed(plan, next, feed)).toBe(feed);
+      expect(targets.every((target) => feed.contains(target))).toBe(true);
+      expect(drawing(feed)).toEqual(drawing(renderFeed(plan, next)));
+    }
+    feed.remove();
+  });
+
+  it('uses current selection callbacks after an in-place drawing update', () => {
+    const selected: (string | null)[] = [];
+    const feed = renderFeed(plan, opts(plan.depart));
+    renderFeed(
+      plan,
+      {
+        ...opts(plan.depart),
+        pxPerHour: 100,
+        onSelect: (item) => selected.push(item?.look ?? null),
+      },
+      feed,
+    );
+    const item = feed.querySelector('g.look-sleep')!;
+    item.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    item.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(selected).toEqual(['sleep', null]);
+  });
+
   it('maps y back to time', () => {
     expect(timeAt(plan, yOf(plan, plan.arrive, px), px)).toBeCloseTo(plan.arrive, 0);
   });
