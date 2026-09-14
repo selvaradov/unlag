@@ -1420,7 +1420,8 @@ dialog.sheet::backdrop {
   padding-top: 0;
 }
 
-.walk-panel .hint-lede {
+.walk-panel .hint-lede,
+.code-entry .hint-lede {
   margin: 0 0 12px;
   color: var(--muted);
 }
@@ -1582,7 +1583,7 @@ dialog.sheet::backdrop {
 
 .walkthrough .code-entry {
   margin: 0 0 22px;
-  padding: 14px 16px 16px;
+  padding: 12px 16px 16px;
   border: 1px solid var(--rule);
   border-radius: 10px;
 }
