@@ -1,5 +1,8 @@
 // Every tunable number in the planner lives here.
 
+// Extra viewports drawn above and below the visible timeline.
+export const FEED_VIEWPORT_MARGIN = 1;
+
 // Core body temperature minimum, hours before habitual wake time.
 export const TMIN_HOURS_BEFORE_WAKE = 3;
 

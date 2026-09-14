@@ -271,7 +271,7 @@ interface Block {
 
 // Lays out blocks in a lane so none overlap: later blocks move down, and lines are dropped
 // from the bottom of a block when there is no room before the next item begins.
-function layout(blocks: Block[]): string {
+function layout(blocks: Block[], viewport?: FeedOptions['viewport']): string {
   const out: string[] = [];
   for (const lane of ['main', 'side'] as const) {
     let bottom = -Infinity;
@@ -280,9 +280,11 @@ function layout(blocks: Block[]): string {
       let used = 0;
       for (const [index, line] of b.lines.entries()) {
         if (top + used + line.h > b.maxY) break;
-        out.push(
-          `<text data-key="${b.item}-${line.cls}-${index}" class="${line.cls}" data-i="${b.item}" x="${b.x}" y="${top + used + line.h - 4}">${line.text}</text>`,
-        );
+        if (!viewport || (top + used <= viewport.bottom && top + used + line.h >= viewport.top)) {
+          out.push(
+            `<text data-key="${b.item}-${line.cls}-${index}" class="${line.cls}" data-i="${b.item}" x="${b.x}" y="${top + used + line.h - 4}">${line.text}</text>`,
+          );
+        }
         used += line.h;
       }
       if (used > 0) bottom = top + used;
@@ -297,6 +299,7 @@ export interface FeedOptions {
   now: number;
   selected: FeedItem | null;
   onSelect: (item: FeedItem | null) => void;
+  viewport?: { top: number; bottom: number };
 }
 
 const feedState = new WeakMap<HTMLElement, { items: FeedItem[]; onSelect: FeedOptions['onSelect'] }>();
@@ -307,6 +310,8 @@ export function renderFeed(plan: Plan, opts: FeedOptions, existing?: HTMLElement
   const height = y(plan.planEnd) + px;
   const narrow = width < NARROW;
   const m = metrics(px, width);
+  const visible = (start: number, end = start) =>
+    !opts.viewport || (start - m.station <= opts.viewport.bottom && end + m.station >= opts.viewport.top);
   const rightCol = narrow ? 10 : RIGHT_COL;
   const mainX = LEFT_COL + MAIN_OFFSET;
   const sideX = Math.min(width - rightCol - 130, mainX + m.side);
@@ -332,6 +337,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions, existing?: HTMLElement
   const marks = hourMarks(plan);
   for (const mk of marks) {
     const yy = y(mk.t);
+    if (!visible(yy)) continue;
     if (mk.dayStart) {
       svg.push(
         `<line data-key="day-line-${mk.t}" class="hour-line day-line" x1="${LEFT_COL}" x2="${width - rightCol}" y1="${yy}" y2="${yy}"/>`,
@@ -415,6 +421,10 @@ export function renderFeed(plan: Plan, opts: FeedOptions, existing?: HTMLElement
     const active = !isPoint(e) && e.start <= now && now < e.end;
     const label = labels[i];
     const g = (body: string, cls: string) => {
+      // Offscreen events retain a box for keyboard focus and automatic scrolling.
+      if (!visible(y(e.start), y(e.end))) {
+        body = `<rect data-key="focus" x="${isMain(item) || item.look === 'flight' ? mainX : sideX}" y="${y(e.start)}" width="${m.station}" height="${Math.max(m.station, y(e.end) - y(e.start))}" fill="none" pointer-events="none"/>`;
+      }
       svg.push(
         `<g data-key="item-${i}" class="item ${cls}${sel}${active ? ' active' : ''}" data-i="${i}" tabindex="0" role="button"><title>${label.title}</title>${body}</g>`,
       );
@@ -536,7 +546,7 @@ export function renderFeed(plan: Plan, opts: FeedOptions, existing?: HTMLElement
       }
     }
   }
-  svg.push(`<g data-key="labels" class="labels">${layout(blocks)}</g>`);
+  svg.push(`<g data-key="labels" class="labels">${layout(blocks, opts.viewport)}</g>`);
   svg.push('</svg>');
   root.innerHTML = svg.join('');
 

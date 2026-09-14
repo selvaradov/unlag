@@ -248,6 +248,7 @@ h3 {
 .feed {
   position: relative;
   touch-action: pan-y;
+  overflow-anchor: none;
 }
 
 .feed svg.rail {

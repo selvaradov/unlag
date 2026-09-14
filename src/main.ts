@@ -5,6 +5,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { generatePlan } from './algorithm/generate.ts';
 import type { Plan, PlanInput } from './algorithm/types.ts';
 import { APP_NAME, HEADER } from './copy.ts';
+import { FEED_VIEWPORT_MARGIN } from './config.ts';
 import { dayRows, renderDayList } from './ui/dayList.ts';
 import {
   DEFAULT_PX_PER_HOUR,
@@ -56,6 +57,7 @@ let editing = false;
 let editSnapshot: PlanInput | null = null;
 let tab: 'plan' | 'trip' = 'plan';
 let pxPerHour = readScale();
+let feedViewport: { top: number; bottom: number } | null = null;
 
 function readScale(): number {
   try {
@@ -102,6 +104,7 @@ function focusLine(): number {
 
 function scrollToTime(t: number, smooth = true): void {
   const top = feedTop() + yOf(plan, t, pxPerHour) - focusLine();
+  if (!smooth) refreshFeed(Math.max(0, top));
   window.scrollTo({ top: Math.max(0, top), behavior: smooth ? 'smooth' : 'instant' });
 }
 
@@ -130,7 +133,7 @@ function setScale(next: number, anchorTime: number, anchorClientY: number, persi
   const top = feedTop() + yOf(plan, anchorTime, clamped) - anchorClientY;
   if (clamped !== pxPerHour) {
     pxPerHour = clamped;
-    refreshFeed();
+    refreshFeed(Math.max(0, top));
     if (persist) saveScale();
   }
   window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
@@ -264,14 +267,23 @@ function hideLabelsUnderNow(): void {
   }
 }
 
-function buildFeed(existing?: HTMLElement): HTMLElement {
+function buildFeed(existing?: HTMLElement, scrollTop = window.scrollY): HTMLElement {
   const host = document.querySelector<HTMLElement>('.feed-host');
   const width = host ? host.clientWidth : Math.min(window.innerWidth, 640);
+  const documentTop = existing
+    ? feedTop()
+    : host
+      ? host.getBoundingClientRect().top + window.scrollY + parseFloat(getComputedStyle(host).paddingTop)
+      : 0;
+  const margin = window.innerHeight * FEED_VIEWPORT_MARGIN;
+  const top = scrollTop - documentTop;
+  feedViewport = { top: top - margin, bottom: top + window.innerHeight + margin };
   const feed = renderFeed(
     plan,
     {
       pxPerHour,
       width,
+      viewport: feedViewport,
       now: Date.now(),
       selected,
       onSelect: (item) => {
@@ -286,9 +298,17 @@ function buildFeed(existing?: HTMLElement): HTMLElement {
   return feed;
 }
 
-function refreshFeed(): void {
+function refreshFeed(scrollTop = window.scrollY): void {
   const old = feedEl();
-  if (old) buildFeed(old);
+  if (old) buildFeed(old, scrollTop);
+}
+
+function updateFeedViewport(): void {
+  const top = window.scrollY - feedTop();
+  const margin = (window.innerHeight * FEED_VIEWPORT_MARGIN) / 2;
+  if (feedViewport && (top < feedViewport.top + margin || top + window.innerHeight > feedViewport.bottom - margin)) {
+    refreshFeed();
+  }
 }
 
 // Pieces shared by the layouts.
@@ -591,6 +611,7 @@ function render(): void {
   }
   window.scrollTo({ top: scrollY, behavior: 'instant' });
   requestAnimationFrame(() => {
+    updateFeedViewport();
     const name = document.querySelector('.day-name');
     if (name) name.textContent = currentDayLabel();
     updateZoneTags();
@@ -680,6 +701,7 @@ window.addEventListener('scroll', () => {
   if (ticking) return;
   ticking = true;
   requestAnimationFrame(() => {
+    updateFeedViewport();
     const name = document.querySelector('.day-name');
     if (name) name.textContent = currentDayLabel();
     updateZoneTags();

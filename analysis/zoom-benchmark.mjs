@@ -96,8 +96,32 @@ for (const name of ['webkit', 'chromium']) {
         assert.equal(await scale(), limit);
       }
     };
+    const checkViewport = async () => {
+      await page.waitForFunction(() => {
+        const header = document.querySelector('.top-bar');
+        const top = header?.getBoundingClientRect().bottom ?? 0;
+        return [...document.querySelectorAll('g.item > rect[data-key="focus"]')].every((rect) => {
+          if (getComputedStyle(rect).display === 'none') return true;
+          const box = rect.getBoundingClientRect();
+          return box.bottom < top || box.top > window.innerHeight;
+        });
+      });
+    };
     await checkHeader();
     await checkZoomButtons();
+    for (const position of [1, 0.5, 0]) {
+      await page.evaluate((fraction) => {
+        window.scrollTo(0, fraction * (document.documentElement.scrollHeight - window.innerHeight));
+      }, position);
+      await checkViewport();
+    }
+    await page.locator('g.item').last().focus();
+    await page.waitForFunction(() => {
+      const item = [...document.querySelectorAll('g.item')].at(-1);
+      const box = item.getBoundingClientRect();
+      return document.activeElement === item && box.top < window.innerHeight && box.bottom > 0;
+    });
+    await checkViewport();
     await page.locator('.feed g.look-light').first().dispatchEvent('click');
     await page.waitForSelector('.headline.selected');
     await checkHeader();

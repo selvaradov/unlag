@@ -208,6 +208,32 @@ describe('feed', () => {
     expect(selected).toEqual(['sleep', null]);
   });
 
+  it('renders viewport labels at the same positions as the complete plan', () => {
+    for (const pxPerHour of [18, 56, 150]) {
+      for (const width of [390, 760]) {
+        const options = { ...opts(plan.depart), pxPerHour, width };
+        const full = renderFeed(plan, options);
+        for (const top of [0, yOf(plan, plan.arrive, pxPerHour), parseFloat(full.style.height) - 500]) {
+          const viewport = { top, bottom: top + 500 };
+          const part = renderFeed(plan, { ...options, viewport });
+          const visibleLabels = (feed: HTMLElement) =>
+            [...feed.querySelectorAll('g.labels text')]
+              .filter(
+                (label) => Number(label.getAttribute('y')) >= top && Number(label.getAttribute('y')) <= viewport.bottom,
+              )
+              .map((label) => label.outerHTML);
+          expect(visibleLabels(part)).toEqual(visibleLabels(full));
+          expect(part.style.height).toBe(full.style.height);
+          expect(part.querySelectorAll('.hour-line').length).toBeLessThan(full.querySelectorAll('.hour-line').length);
+          expect([...part.querySelectorAll('g.item title')].map((title) => title.textContent)).toEqual(
+            [...full.querySelectorAll('g.item title')].map((title) => title.textContent),
+          );
+          expect(part.querySelectorAll('g.item[tabindex="0"]').length).toBe(full.querySelectorAll('g.item').length);
+        }
+      }
+    }
+  });
+
   it('maps y back to time', () => {
     expect(timeAt(plan, yOf(plan, plan.arrive, px), px)).toBeCloseTo(plan.arrive, 0);
   });
