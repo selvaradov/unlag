@@ -104,6 +104,8 @@ export function renderDayList(plan: Plan, now: number, onPick: (iso: string) => 
   for (const row of dayRows(plan, now)) {
     const li = document.createElement('li');
     li.dataset.day = row.iso;
+    li.dataset.start = String(row.start);
+    li.dataset.end = String(row.end);
     if (row.today) li.classList.add('today');
     // The take off or landing icon says which; the word would not fit beside the zone.
     const flight = row.flight

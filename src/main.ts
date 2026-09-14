@@ -396,9 +396,8 @@ function zoneTags(): HTMLElement {
 
 function updateInView(): void {
   const t = timeAtFocus();
-  const row = dayRows(plan, Date.now()).find((r) => t >= r.start && t < r.end);
   for (const li of document.querySelectorAll<HTMLElement>('.day-list li')) {
-    li.classList.toggle('in-view', !!row && li.dataset.day === row.iso);
+    li.classList.toggle('in-view', t >= Number(li.dataset.start) && t < Number(li.dataset.end));
   }
 }
 

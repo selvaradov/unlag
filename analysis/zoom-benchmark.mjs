@@ -28,6 +28,33 @@ for (const name of ['webkit', 'chromium']) {
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     if (values.profile) {
+      await page.route('**/src/ui/dayList.ts*', async (route) => {
+        const response = await route.fetch();
+        let body = await response.text();
+        body = body.replace(
+          'function dayRows(plan, now) {',
+          'function dayRows(plan, now) {\nconst profileStart = performance.now();',
+        );
+        body = body.replace(
+          'return rows;',
+          '(window.dayRowProfile ??= []).push(performance.now() - profileStart);\nreturn rows;',
+        );
+        await route.fulfill({ response, body });
+      });
+      await page.route('**/src/main.ts*', async (route) => {
+        const response = await route.fetch();
+        let body = await response.text();
+        const start = body.indexOf('function setScale(');
+        const end = body.indexOf('function zoomBy(', start);
+        let scale = body.slice(start, end);
+        scale = scale.replace('persist = true) {', 'persist = true) {\nconst profileStart = performance.now();');
+        scale = scale.replace(
+          /window.scrollTo\([\s\S]*?\);/,
+          'const profileScroll = performance.now();\n$&\n(window.scaleProfile ??= []).push({ totalMs: performance.now() - profileStart, scrollMs: performance.now() - profileScroll });',
+        );
+        body = body.slice(0, start) + scale + body.slice(end);
+        await route.fulfill({ response, body });
+      });
       await page.route('**/src/ui/feed.ts*', async (route) => {
         const response = await route.fetch();
         let body = await response.text();
@@ -111,7 +138,10 @@ for (const name of ['webkit', 'chromium']) {
     await checkZoomButtons();
     for (const position of [1, 0.5, 0]) {
       await page.evaluate((fraction) => {
-        window.scrollTo(0, fraction * (document.documentElement.scrollHeight - window.innerHeight));
+        window.scrollTo({
+          top: fraction * (document.documentElement.scrollHeight - window.innerHeight),
+          behavior: 'instant',
+        });
       }, position);
       await checkViewport();
     }
@@ -152,14 +182,22 @@ for (const name of ['webkit', 'chromium']) {
     await checkHeader();
     await page.evaluate(() => {
       window.zoomProfile = [];
+      window.dayRowProfile = [];
+      window.scaleProfile = [];
     });
     if (name === 'chromium') {
       const cdp = await page.context().newCDPSession(page);
       await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
     }
     const measurements = await page.evaluate(async () => {
-      const { DEFAULT_PX_PER_HOUR, MIN_PX_PER_HOUR, MAX_PX_PER_HOUR, FEED_PAD_TOP, metrics } =
+      const { DEFAULT_PX_PER_HOUR, MIN_PX_PER_HOUR, MAX_PX_PER_HOUR, FEED_PAD_TOP, metrics, timeAt, axisStart } =
         await import('/src/ui/feed.ts');
+      const { generatePlan } = await import('/src/algorithm/generate.ts');
+      const { readInput } = await import('/src/ui/state.ts');
+      const { dayRows } = await import('/src/ui/dayList.ts');
+      const plan = generatePlan(readInput(location.search));
+      const days = dayRows(plan, Date.now());
+      window.dayRowProfile = [];
       const rows = [];
       const layouts = [];
       const frames = [];
@@ -177,7 +215,10 @@ for (const name of ['webkit', 'chromium']) {
       const height = document.querySelector('.feed').offsetHeight;
       for (const position of [0.5, 0.95]) {
         for (const ratio of [1.8, 0.4, 2.5, 0.32]) {
-          window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * position);
+          window.scrollTo({
+            top: (document.documentElement.scrollHeight - window.innerHeight) * position,
+            behavior: 'instant',
+          });
           await wait();
           await wait();
           const feed = document.querySelector('.feed');
@@ -245,12 +286,22 @@ for (const name of ['webkit', 'chromium']) {
             await wait();
             sample();
           }
+          const barHeight = document.querySelector('.top-bar').offsetHeight;
+          const focus = barHeight + (window.innerHeight - barHeight) * 0.3;
+          const time = Math.min(
+            plan.planEnd,
+            Math.max(axisStart(plan), timeAt(plan, focus - feed.getBoundingClientRect().top, scale())),
+          );
+          const day = days.find((row) => time >= row.start && time < row.end);
           rows.push({
             position,
             ratio,
             expected: Math.min(MAX_PX_PER_HOUR, Math.max(MIN_PX_PER_HOUR, start * ratio)),
             actual: scale(),
             releaseMs,
+            highlightCorrect: [...document.querySelectorAll('.day-list li')].every(
+              (item) => item.classList.contains('in-view') === (item.dataset.day === day?.iso),
+            ),
           });
         }
       }
@@ -264,11 +315,98 @@ for (const name of ['webkit', 'chromium']) {
       assert.ok(layout.anchorError <= 1, `The time under the fingers must stay anchored ${JSON.stringify(layout)}`);
       assert.equal(layout.distortion, 0, 'Text must not be stretched');
     }
-    for (const row of measurements.rows) assert.ok(Math.abs(row.expected - row.actual) < 0.000001);
+    for (const row of measurements.rows) {
+      assert.ok(Math.abs(row.expected - row.actual) < 0.000001);
+      assert.ok(row.highlightCorrect, 'The highlighted day must follow the focus time');
+    }
     assert.deepEqual(errors, []);
     const profile = values.profile ? await page.evaluate(() => window.zoomProfile) : undefined;
+    const scrollProfile = values.profile
+      ? await page.evaluate(() => ({ days: window.dayRowProfile, scale: window.scaleProfile }))
+      : undefined;
     if (values.profile) assert.ok(profile.length > 0, 'Renderer profiling must record samples');
-    results.push({ browser: name, cpuThrottle: name === 'chromium' ? 4 : 1, ...measurements, profile });
+    const edges = await page.evaluate(async () => {
+      const { FEED_PAD_TOP, MIN_PX_PER_HOUR, MAX_PX_PER_HOUR } = await import('/src/ui/feed.ts');
+      const feed = document.querySelector('.feed');
+      const target = feed.querySelector('text.hour-label');
+      const hours =
+        (parseFloat(feed.style.height) - FEED_PAD_TOP) / Number(window.localStorage.getItem('unlag-px-per-hour'));
+      const scale = () => (parseFloat(feed.style.height) - FEED_PAD_TOP) / hours;
+      const near = (a, b) => Math.abs(a - b) < 0.001;
+      const wait = () => new Promise((resolve) => requestAnimationFrame(resolve));
+      const gesture = 'GestureEvent' in window;
+      const send = (kind, factor = 1, centre = 400, pair = [0, 1]) => {
+        const type =
+          kind === 'cancel'
+            ? 'touchcancel'
+            : gesture
+              ? `gesture${kind}`
+              : `touch${{ start: 'start', change: 'move', end: 'end' }[kind]}`;
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        if (gesture) Object.assign(event, { scale: factor, clientX: 195, clientY: centre });
+        else
+          Object.defineProperty(event, 'touches', {
+            value:
+              kind === 'end' || kind === 'cancel'
+                ? []
+                : [
+                    { identifier: pair[0], clientX: 195, clientY: centre - 50 * factor },
+                    { identifier: pair[1], clientX: 195, clientY: centre + 50 * factor },
+                  ],
+          });
+        target.dispatchEvent(event);
+      };
+      send('start');
+      send('change', 100);
+      send('end');
+      const maximum = near(scale(), MAX_PX_PER_HOUR);
+      await wait();
+      await wait();
+      const noLateFrame = near(scale(), MAX_PX_PER_HOUR);
+      send('start');
+      send('change', 0.0001);
+      send('cancel');
+      const minimum = near(scale(), MIN_PX_PER_HOUR);
+      window.scrollTo({ top: (document.documentElement.scrollHeight - window.innerHeight) / 2, behavior: 'instant' });
+      await wait();
+      await wait();
+      const top = window.scrollY;
+      send('start');
+      send('change', 0.5, 430);
+      send('end');
+      const clampedPan = near(scale(), MIN_PX_PER_HOUR) && Math.abs(window.scrollY - (top - 30)) <= 1;
+      send('start');
+      send('change', 0);
+      send('end');
+      const invalidScale = near(scale(), MIN_PX_PER_HOUR);
+      send('start');
+      send('change', 2);
+      send('start');
+      send('change', 0.5);
+      send('end');
+      await wait();
+      await wait();
+      const restart = near(scale(), MIN_PX_PER_HOUR);
+      let changedPair = true;
+      if (!gesture) {
+        send('start');
+        send('change', 1.5);
+        send('change', 1.5, 400, [0, 2]);
+        send('change', 3, 400, [0, 2]);
+        send('end');
+        changedPair = near(scale(), MIN_PX_PER_HOUR * 3);
+      }
+      return { maximum, minimum, noLateFrame, clampedPan, invalidScale, restart, changedPair };
+    });
+    assert.ok(Object.values(edges).every(Boolean), `Gesture edge cases must pass ${JSON.stringify(edges)}`);
+    results.push({
+      browser: name,
+      cpuThrottle: name === 'chromium' ? 4 : 1,
+      ...measurements,
+      profile,
+      scrollProfile,
+      edges,
+    });
   } finally {
     await browser.close();
   }

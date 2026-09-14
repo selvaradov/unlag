@@ -4,7 +4,7 @@ import { generatePlan } from '../src/algorithm/generate.ts';
 import type { PlanInput } from '../src/algorithm/types.ts';
 import { DEFAULT_INPUT } from '../src/config.ts';
 import { HOUR } from '../src/algorithm/time.ts';
-import { dayRows } from '../src/ui/dayList.ts';
+import { dayRows, renderDayList } from '../src/ui/dayList.ts';
 import { DEFAULT_PX_PER_HOUR, FEED_PAD_TOP, feedItems, metrics, renderFeed, timeAt, yOf } from '../src/ui/feed.ts';
 import { composeHeadline } from '../src/ui/headline.ts';
 import { toICS } from '../src/ui/ics.ts';
@@ -259,6 +259,15 @@ describe('headline', () => {
 });
 
 describe('day list', () => {
+  it('retains each day interval for scroll highlighting across zone changes', () => {
+    const now = plan.depart;
+    const list = renderDayList(plan, now, () => {});
+    const rows = dayRows(plan, now);
+    const days = [...list.querySelectorAll<HTMLElement>('li')];
+    expect(days.map((day) => [day.dataset.day, Number(day.dataset.start), Number(day.dataset.end)])).toEqual(
+      rows.map((row) => [row.iso, row.start, row.end]),
+    );
+  });
   it('has one row per day with the night, the flight time on the travel day, and no empty last day', () => {
     const rows = dayRows(plan, plan.depart);
     const travel = rows.filter((r) => r.flight);

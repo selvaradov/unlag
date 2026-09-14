@@ -84,7 +84,7 @@ the page opens on a three step walkthrough.
 Layouts: under 900 px a fixed header with day and Trip sheets, zoom and Now
 floating; 900 to 1199 px a side panel with Plan and Trip tabs; from 1200 px
 three columns with the day list left and trip card right. Days show instructions
-on a noon to noon strip. Pinch zoom updates text, widths and spacing during the gesture;
+on a noon to noon strip. Pinching updates text, line widths and spacing;
 ctrl and wheel or repeated magnifier presses zoom. The scale is remembered.
 
 Theme: paper and ink, IBM Plex Sans and Mono self hosted from the Fontsource
@@ -152,7 +152,7 @@ pnpm build      # dist/
 pnpm fonts      # refresh public/fonts from the Fontsource packages
 ```
 
-Browser zoom checks against the dev server: `node analysis/zoom-benchmark.mjs --playwright <module-path>`.
+Zoom checks ([timings](analysis/zoom-performance.md)): `node analysis/zoom-benchmark.mjs --playwright <module-path>`.
 
 Deploy with `netlify deploy --prod --dir dist --no-build` from this folder.
 The site is a separate Netlify project with the custom domain attached; the
