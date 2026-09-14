@@ -21,8 +21,8 @@ function download(name: string, content: string, type: string): void {
   URL.revokeObjectURL(url);
 }
 
-// Asks the server for a code once and shows it beside the button; tapping again copies it. The
-// label never changes so nothing moves, and the line beside it is empty until there is a code.
+// Asks the server for a code once, then the button shows the code and tapping it copies. The
+// button keeps its first width so nothing moves when the label changes.
 function renderCodeLine(search: string): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'action-line';
@@ -30,32 +30,40 @@ function renderCodeLine(search: string): HTMLElement {
   const status = document.createElement('p');
   status.className = 'action-status';
   wrap.append(button, status);
-  const say = (html: string) => {
-    status.innerHTML = html;
-    status.hidden = html === '';
+  const say = (text: string) => {
+    status.textContent = text;
+    status.hidden = text === '';
   };
-  const show = (code: string) => say(CODE.issued(`<span class="code">${formatCode(code)}</span>`));
+  const label = (icon: string, code: string) => {
+    button.innerHTML = `${icon}<span class="code">${formatCode(code)}</span>`;
+  };
+  const show = (code: string) => {
+    label(ICONS.hash, code);
+    say(CODE.issued);
+  };
   const known = issuedCode(search);
   if (known) show(known);
   else say('');
   button.addEventListener('click', async () => {
+    button.style.minWidth = `${button.offsetWidth}px`;
     const known = issuedCode(search);
     if (known) {
       await navigator.clipboard.writeText(formatCode(known));
-      button.innerHTML = `${ICONS.check}<span>${CODE.get}</span>`;
+      label(ICONS.check, known);
       button.setAttribute('aria-label', CODE.copied);
       setTimeout(() => {
-        button.innerHTML = `${ICONS.hash}<span>${CODE.get}</span>`;
+        label(ICONS.hash, known);
         button.removeAttribute('aria-label');
       }, 1500);
       return;
     }
     button.disabled = true;
-    say(CODE.getting);
+    button.innerHTML = `${ICONS.hash}<span>${CODE.getting}</span>`;
     try {
       show(await createCode(search));
     } catch (err) {
       const kind = err instanceof PlanCodeError ? err.code : 'failed';
+      button.innerHTML = `${ICONS.hash}<span>${CODE.get}</span>`;
       say(CODE.errors[kind] ?? CODE.errors.failed);
     } finally {
       button.disabled = false;
@@ -169,8 +177,10 @@ export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptio
   edit.addEventListener('click', () => opts.onEdit());
   actions.append(ics, link, edit);
   card.appendChild(actions);
-  card.appendChild(renderCodeLine(writeInput(input)));
-  card.appendChild(renderNotify(writeInput(input)));
+  const more = document.createElement('div');
+  more.className = 'actions';
+  more.append(renderCodeLine(writeInput(input)), renderNotify(writeInput(input)));
+  card.appendChild(more);
   card.appendChild(renderHowLede());
   return card;
 }

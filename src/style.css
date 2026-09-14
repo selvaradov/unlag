@@ -1533,35 +1533,19 @@ dialog.sheet::backdrop {
 
 /* Notifications */
 
-/* A button with a line of explanation beside it */
+/* Buttons with a message beneath the row, shown only when there is one */
 
-.action-line {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 10px;
-  align-items: center;
-  margin: 4px 0 0;
-}
-
-.action-line + .action-line {
-  margin-top: 12px;
-}
-
-.action-line .icon-button:first-child {
-  grid-row: 1;
+.actions .action-line {
+  display: contents;
 }
 
 .action-status {
-  margin: 0;
+  flex-basis: 100%;
+  order: 1;
+  margin: -2px 0 0;
   font-size: 0.8rem;
   line-height: 1.35;
   color: var(--muted);
-}
-
-.action-line .icon-button + .icon-button {
-  grid-column: 1 / -1;
-  justify-self: start;
-  margin-top: 6px;
 }
 
 .notify.impossible .icon-button[disabled] {
@@ -1576,9 +1560,8 @@ dialog.sheet::backdrop {
   letter-spacing: 0.04em;
 }
 
-.action-status .code {
+.icon-button .code {
   color: var(--ink);
-  font-size: 0.95rem;
 }
 
 .walkthrough .code-entry {

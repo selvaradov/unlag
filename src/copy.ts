@@ -105,7 +105,7 @@ export const FORM = {
 export const CODE = {
   get: 'Code for another device',
   getting: 'Getting a code…',
-  issued: (code: string) => `Type ${code} on the first page of Unlag on the other device. Tap to copy.`,
+  issued: 'Type the code on the first page of Unlag on the other device. Tap it to copy.',
   copied: 'Copied',
   have: 'Already made a plan on another device? Open it here with its code.',
   placeholder: 'KM7 4PX',
@@ -223,8 +223,8 @@ export const SUMMARY = {
   flight: (day: string, dep: string, arr: string, length: string) => `${day} · ${dep} to ${arr} · ${length}`,
   shift: (hours: number, direction: Direction) =>
     direction === 'delay'
-      ? `${hours} h behind. Your clock moves later, which is the easy way.`
-      : `${hours} h ahead. Your clock moves earlier, which takes longer.`,
+      ? `${hours} h behind. Moving later, the easy way.`
+      : `${hours} h ahead. Moving earlier, the slow way.`,
   sleep: (bed: string, wake: string) => `Usual sleep ${bed} to ${wake}`,
   adapted: (day: string) => `Predicted adapted by ${day}`,
   notAdapted: 'Not fully adapted in the days shown',
