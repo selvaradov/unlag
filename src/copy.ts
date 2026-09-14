@@ -82,10 +82,9 @@ export const FORM = {
   bed: 'Usual bedtime',
   wake: 'Usual wake time',
   travelWake: 'Wake time on travel day',
-  travelWakeAuto: (at: string) => `Automatic (${at})`,
-  travelWakeAutoPending: 'Automatic',
+  travelWakeAuto: 'Automatic',
   travelWakeAutoHint:
-    "Your shifted wake time, or four hours before departure if that's earlier. Pick a time if you need an earlier alarm.",
+    "Chosen by the plan: your shifted wake time, or four hours before departure if that's earlier. Untick to set the alarm yourself.",
   travelWakeHint: "The alarm you'll set on the travel day. The night before is kept to at least six and a half hours.",
   preflightDays: 'Days to prepare before the flight',
   preflightHint: 'Bedtime moves up to an hour a day, so more than three days gains little.',

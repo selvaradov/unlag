@@ -1125,11 +1125,43 @@ dialog.sheet::backdrop {
   cursor: default;
 }
 
-.trip-form label {
+.trip-form label,
+.trip-form .field {
   display: flex;
   flex-direction: column;
   gap: 3px;
   font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* Hour and minute selects, with room beside them for an automatic switch */
+.time-fields {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.time-fields .hm {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ink);
+}
+
+.time-fields .hm select {
+  min-width: 3.8em;
+}
+
+.time-fields .auto {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.trip-form select:disabled {
   color: var(--muted);
 }
 
