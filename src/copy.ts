@@ -103,12 +103,12 @@ export const FORM = {
 };
 
 export const CODE = {
-  get: 'Get a code',
+  get: 'Code for another device',
   getting: 'Getting a code…',
-  hint: 'Type it on the first page of Unlag on another device to open this plan there. Tap the code to copy it.',
+  offHint: 'Open this plan on another device by typing a short code there.',
+  issued: (code: string) => `Type ${code} on the first page of Unlag on the other device. Tap the button to copy it.`,
   copied: 'Copied',
   have: 'Already made a plan on another device? Open it here with its code.',
-  label: 'Code',
   placeholder: 'KM7 4PX',
   open: 'Open',
   looking: 'Looking it up…',

@@ -1,5 +1,6 @@
 // Icons from Lucide (https://lucide.dev, ISC licence), imported from the package as SVG text.
 import bedDouble from 'lucide-static/icons/bed-double.svg?raw';
+import arrowRight from 'lucide-static/icons/arrow-right.svg?raw';
 import bell from 'lucide-static/icons/bell.svg?raw';
 import hash from 'lucide-static/icons/hash.svg?raw';
 import calendar from 'lucide-static/icons/calendar.svg?raw';
@@ -59,6 +60,7 @@ export const ICONS = {
   calendar: prepare(calendar),
   link: prepare(link),
   hash: prepare(hash),
+  arrowRight: prepare(arrowRight),
   check: prepare(check),
   edit: prepare(pencil),
   zoomIn: prepare(zoomIn),

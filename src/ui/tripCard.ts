@@ -21,46 +21,45 @@ function download(name: string, content: string, type: string): void {
   URL.revokeObjectURL(url);
 }
 
-// Asks the server for a code once, then shows it; tapping the code copies it.
-function codeButton(search: string): { button: HTMLButtonElement; hint: HTMLElement } {
-  const button = iconButton(ICONS.hash, CODE.get, 'code-button');
-  const hint = document.createElement('p');
-  hint.className = 'code-hint';
-  hint.hidden = true;
+// Asks the server for a code once and shows it beside the button; tapping again copies it. The
+// label never changes so nothing moves.
+function renderCodeLine(search: string): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'action-line';
+  const button = iconButton(ICONS.hash, CODE.get);
+  const status = document.createElement('p');
+  status.className = 'action-status';
+  wrap.append(button, status);
   const show = (code: string) => {
-    button.innerHTML = `${ICONS.hash}<span class="code">${formatCode(code)}</span>`;
-    button.classList.add('issued');
-    hint.hidden = false;
-    hint.textContent = CODE.hint;
+    status.innerHTML = CODE.issued(`<span class="code">${formatCode(code)}</span>`);
   };
   const known = issuedCode(search);
   if (known) show(known);
+  else status.textContent = CODE.offHint;
   button.addEventListener('click', async () => {
     const known = issuedCode(search);
     if (known) {
       await navigator.clipboard.writeText(formatCode(known));
-      button.innerHTML = `${ICONS.check}<span class="code">${formatCode(known)}</span>`;
+      button.innerHTML = `${ICONS.check}<span>${CODE.get}</span>`;
       button.setAttribute('aria-label', CODE.copied);
       setTimeout(() => {
-        button.innerHTML = `${ICONS.hash}<span class="code">${formatCode(known)}</span>`;
+        button.innerHTML = `${ICONS.hash}<span>${CODE.get}</span>`;
         button.removeAttribute('aria-label');
       }, 1500);
       return;
     }
     button.disabled = true;
-    button.innerHTML = `${ICONS.hash}<span>${CODE.getting}</span>`;
+    status.textContent = CODE.getting;
     try {
       show(await createCode(search));
     } catch (err) {
       const kind = err instanceof PlanCodeError ? err.code : 'failed';
-      button.innerHTML = `${ICONS.hash}<span>${CODE.get}</span>`;
-      hint.hidden = false;
-      hint.textContent = CODE.errors[kind] ?? CODE.errors.failed;
+      status.textContent = CODE.errors[kind] ?? CODE.errors.failed;
     } finally {
       button.disabled = false;
     }
   });
-  return { button, hint };
+  return wrap;
 }
 
 function iconButton(iconHtml: string, label: string, cls = ''): HTMLButtonElement {
@@ -166,10 +165,9 @@ export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptio
   });
   const edit = iconButton(ICONS.edit, HEADER.editTrip, 'edit-toggle');
   edit.addEventListener('click', () => opts.onEdit());
-  const { button: code, hint: codeHint } = codeButton(writeInput(input));
-  actions.append(ics, link, code, edit);
+  actions.append(ics, link, edit);
   card.appendChild(actions);
-  card.appendChild(codeHint);
+  card.appendChild(renderCodeLine(writeInput(input)));
   card.appendChild(renderNotify(writeInput(input)));
   card.appendChild(renderHowLede());
   return card;

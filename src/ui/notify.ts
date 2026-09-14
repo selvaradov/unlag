@@ -84,12 +84,12 @@ type State = 'off' | 'on' | 'other';
 
 export function renderNotify(search: string): HTMLElement {
   const wrap = document.createElement('div');
-  wrap.className = 'notify';
+  wrap.className = 'action-line notify';
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'icon-button';
   const status = document.createElement('p');
-  status.className = 'notify-status';
+  status.className = 'action-status';
   wrap.append(button, status);
 
   const show = (state: State, message = '') => {

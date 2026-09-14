@@ -4,7 +4,7 @@ import { DEFAULT_INPUT } from '../config.ts';
 import { APP_NAME, CODE, CREDIT, TAGLINE, WALK } from '../copy.ts';
 import { findAirport, loadAirports } from '../data/airports.ts';
 import { PlanCodeError, lookupCode } from './planCode.ts';
-import { createTripFields, field } from './tripFields.ts';
+import { createTripFields } from './tripFields.ts';
 import { ICONS } from './icons.ts';
 
 export interface WalkthroughOptions {
@@ -164,13 +164,13 @@ function codeEntry(onCode: (search: string) => void): HTMLElement {
   const go = document.createElement('button');
   go.type = 'button';
   go.className = 'icon-button';
-  go.innerHTML = `${ICONS.hash}<span>${CODE.open}</span>`;
+  go.innerHTML = `<span>${CODE.open}</span>${ICONS.arrowRight}`;
   const status = document.createElement('p');
   status.className = 'lookup-status';
   status.hidden = true;
   const row = document.createElement('div');
-  row.className = 'lookup-row code-row';
-  row.append(field(CODE.label, 'hash', input), go);
+  row.className = 'code-row';
+  row.append(input, go);
   lookup.append(row, status);
   const say = (msg: string, kind: 'error' | 'busy') => {
     status.hidden = false;

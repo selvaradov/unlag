@@ -1179,7 +1179,8 @@ dialog.sheet::backdrop {
 }
 
 .trip-form input,
-.trip-form select {
+.trip-form select,
+.code-input {
   font: inherit;
   font-size: 0.88rem;
   color: var(--ink);
@@ -1531,7 +1532,9 @@ dialog.sheet::backdrop {
 
 /* Notifications */
 
-.notify {
+/* A button with a line of explanation beside it */
+
+.action-line {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 2px 10px;
@@ -1539,18 +1542,22 @@ dialog.sheet::backdrop {
   margin: 4px 0 0;
 }
 
-.notify .icon-button:first-child {
+.action-line + .action-line {
+  margin-top: 12px;
+}
+
+.action-line .icon-button:first-child {
   grid-row: 1;
 }
 
-.notify-status {
+.action-status {
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.35;
   color: var(--muted);
 }
 
-.notify .icon-button + .icon-button {
+.action-line .icon-button + .icon-button {
   grid-column: 1 / -1;
   justify-self: start;
   margin-top: 6px;
@@ -1568,11 +1575,9 @@ dialog.sheet::backdrop {
   letter-spacing: 0.04em;
 }
 
-.code-hint {
-  margin: -6px 0 14px;
-  font-size: 0.8rem;
-  line-height: 1.35;
-  color: var(--muted);
+.action-status .code {
+  color: var(--ink);
+  font-size: 0.95rem;
 }
 
 .walkthrough .code-entry {
@@ -1586,18 +1591,23 @@ dialog.sheet::backdrop {
   margin: 0;
 }
 
-.walkthrough .code-entry .lookup-row {
-  max-width: 24rem;
-}
-
 .code-row {
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .code-input {
+  width: 11ch;
   font-family: var(--mono);
+  font-size: 1rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+}
+
+.code-input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
 }
 
 /* Theme toggle */
