@@ -22,7 +22,7 @@ function download(name: string, content: string, type: string): void {
 }
 
 // Asks the server for a code once and shows it beside the button; tapping again copies it. The
-// label never changes so nothing moves.
+// label never changes so nothing moves, and the line beside it is empty until there is a code.
 function renderCodeLine(search: string): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'action-line';
@@ -30,12 +30,14 @@ function renderCodeLine(search: string): HTMLElement {
   const status = document.createElement('p');
   status.className = 'action-status';
   wrap.append(button, status);
-  const show = (code: string) => {
-    status.innerHTML = CODE.issued(`<span class="code">${formatCode(code)}</span>`);
+  const say = (html: string) => {
+    status.innerHTML = html;
+    status.hidden = html === '';
   };
+  const show = (code: string) => say(CODE.issued(`<span class="code">${formatCode(code)}</span>`));
   const known = issuedCode(search);
   if (known) show(known);
-  else status.textContent = CODE.offHint;
+  else say('');
   button.addEventListener('click', async () => {
     const known = issuedCode(search);
     if (known) {
@@ -49,12 +51,12 @@ function renderCodeLine(search: string): HTMLElement {
       return;
     }
     button.disabled = true;
-    status.textContent = CODE.getting;
+    say(CODE.getting);
     try {
       show(await createCode(search));
     } catch (err) {
       const kind = err instanceof PlanCodeError ? err.code : 'failed';
-      status.textContent = CODE.errors[kind] ?? CODE.errors.failed;
+      say(CODE.errors[kind] ?? CODE.errors.failed);
     } finally {
       button.disabled = false;
     }

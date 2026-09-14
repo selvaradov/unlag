@@ -1,5 +1,5 @@
 // Push notifications for this plan on this device: a button that subscribes or unsubscribes,
-// with a line of status beside it. The subscription is tied to a plan, so a device following a
+// with a line beside it that appears only when something needs saying. The subscription is tied to a plan, so a device following a
 // different plan is offered a switch.
 import { NOTIFY } from '../copy.ts';
 import { ICONS } from './icons.ts';
@@ -96,8 +96,8 @@ export function renderNotify(search: string): HTMLElement {
     const label = state === 'on' ? NOTIFY.on : state === 'other' ? NOTIFY.switchTo : NOTIFY.off;
     const icon = state === 'on' ? ICONS.check : ICONS.bell;
     button.innerHTML = `${icon}<span>${label}</span>`;
-    status.textContent =
-      message || (state === 'on' ? NOTIFY.onHint : state === 'other' ? NOTIFY.otherHint : NOTIFY.offHint);
+    status.textContent = message;
+    status.hidden = message === '';
   };
 
   if (!supported()) {
@@ -124,13 +124,14 @@ export function renderNotify(search: string): HTMLElement {
         }
       }
       status.textContent = NOTIFY.addToHomeSteps;
+      status.hidden = false;
     });
     wrap.appendChild(add);
     return wrap;
   }
 
   let state: State = 'off';
-  show('off', NOTIFY.checking);
+  show('off');
   void (async () => {
     const sub = await currentSubscription();
     const followed = sub ? await followedPlan(sub) : null;
@@ -148,7 +149,7 @@ export function renderNotify(search: string): HTMLElement {
       } else {
         await subscribe(search);
         state = 'on';
-        show(state, NOTIFY.justOn);
+        show(state);
       }
     } catch (err) {
       const code = (err as Error).message;
