@@ -3,7 +3,7 @@
 import { generatePlan } from '../algorithm/generate.ts';
 import type { CaffeineHabit, PlanInput } from '../algorithm/types.ts';
 import { LIMITS, clampDays, isClock, isZone, planProblem } from '../algorithm/validate.ts';
-import { DEFAULT_INPUT } from '../config.ts';
+import { DEFAULT_INPUT, PLAN_CODE } from '../config.ts';
 
 const KEYS = {
   homeZone: 'from',
@@ -119,4 +119,15 @@ export function rememberedPlan(): string | null {
   } catch {
     return null;
   }
+}
+
+// A typed code with spaces, dashes and case forgiven, or null when it cannot be a code.
+export function normaliseCode(raw: string): string | null {
+  const code = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length !== PLAN_CODE.length) return null;
+  return [...code].every((c) => PLAN_CODE.alphabet.includes(c)) ? code : null;
+}
+
+export function formatCode(code: string): string {
+  return `${code.slice(0, 3)} ${code.slice(3)}`;
 }

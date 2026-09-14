@@ -102,6 +102,25 @@ export const FORM = {
   },
 };
 
+export const CODE = {
+  get: 'Get a code',
+  getting: 'Getting a code…',
+  hint: 'Type it on the first page of Unlag on another device to open this plan there. Tap the code to copy it.',
+  copied: 'Copied',
+  have: 'Already made a plan on another device? Open it here with its code.',
+  label: 'Code',
+  placeholder: 'KM7 4PX',
+  open: 'Open',
+  looking: 'Looking it up…',
+  errors: {
+    invalid: 'A code is six letters and digits.',
+    'not-found': "That code isn't known. Codes stop working once the plan's days have ended.",
+    ended: "This plan's days have ended, so there's nothing to open elsewhere.",
+    forbidden: 'Codes only work from this site.',
+    failed: "Couldn't reach the server. Try again in a moment.",
+  } as Record<string, string>,
+};
+
 export const DOWNLOAD_ICS = 'Calendar file';
 export const COPY_LINK = 'Copy link';
 export const LINK_COPIED = 'Copied';

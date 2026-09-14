@@ -128,8 +128,11 @@ worker in `src/sw.ts` shows the notification, opens the plan on tap, reloads
 the page when a new build takes over, and caches the app for offline use. On
 iPhone and iPad the site must be added to the home screen first. The installed
 app relaunches at the bare address, so the device remembers the plan last shown
-and reopens on it until its days have ended. The calendar file remains the no
-server alternative.
+and reopens on it until its days have ended. A plan also travels between devices
+by a six character code: `netlify/functions/plan-code.mts` stores the query
+string under a fresh code in a blob store and looks it up from the walkthrough,
+and the push tick removes codes once the plan's days have ended. The calendar
+file remains the no server alternative.
 
 ## Data
 

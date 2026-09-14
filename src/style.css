@@ -1561,6 +1561,45 @@ dialog.sheet::backdrop {
   cursor: default;
 }
 
+/* Plan codes */
+
+.code {
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.code-hint {
+  margin: -6px 0 14px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.walkthrough .code-entry {
+  margin: 0 0 22px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.walkthrough .code-entry .lookup {
+  margin: 0;
+}
+
+.walkthrough .code-entry .lookup-row {
+  max-width: 24rem;
+}
+
+.code-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.code-input {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* Theme toggle */
 
 .theme-toggle {

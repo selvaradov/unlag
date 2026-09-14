@@ -10,6 +10,7 @@
 //   - when the counters or the usage check cannot be read, the lookup is refused
 import { getStore } from '@netlify/blobs';
 import type { Config, Context } from '@netlify/functions';
+import { fromThisSite, json } from '../lib/api.ts';
 
 const MONTHLY_CAP = Number(process.env.LOOKUP_MONTHLY_CAP ?? 300);
 const HOURLY_CAP_PER_CLIENT = Number(process.env.LOOKUP_HOURLY_CAP ?? 12);
@@ -20,13 +21,6 @@ interface Point {
   // UTC instants; the page turns them into the wall clock at each airport.
   departureUtc?: string;
   arrivalUtc?: string;
-}
-
-function json(body: unknown, status = 200, cache = 'no-store'): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': cache },
-  });
 }
 
 // "UA 900", "ua900" and "UA-900" all mean carrier UA, flight 900.
@@ -43,19 +37,6 @@ function nextDay(date: string): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
-}
-
-// The page's own requests carry a same-origin fetch header or a referer from this host.
-function fromThisSite(req: Request): boolean {
-  const site = new URL(req.url).host;
-  const fetchSite = req.headers.get('sec-fetch-site');
-  if (fetchSite === 'same-origin') return true;
-  const referer = req.headers.get('referer') ?? req.headers.get('origin') ?? '';
-  try {
-    return new URL(referer).host === site;
-  } catch {
-    return false;
-  }
 }
 
 // Counts in a blob store with conditional writes, so two requests at once cannot both slip under

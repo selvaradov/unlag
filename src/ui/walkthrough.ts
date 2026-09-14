@@ -1,9 +1,10 @@
 // The first run: three steps that build a plan when the page opens without one.
 import type { PlanInput } from '../algorithm/types.ts';
 import { DEFAULT_INPUT } from '../config.ts';
-import { APP_NAME, CREDIT, TAGLINE, WALK } from '../copy.ts';
+import { APP_NAME, CODE, CREDIT, TAGLINE, WALK } from '../copy.ts';
 import { findAirport, loadAirports } from '../data/airports.ts';
-import { createTripFields } from './tripFields.ts';
+import { PlanCodeError, lookupCode } from './planCode.ts';
+import { createTripFields, field } from './tripFields.ts';
 import { ICONS } from './icons.ts';
 
 export interface WalkthroughOptions {
@@ -11,6 +12,8 @@ export interface WalkthroughOptions {
   base: PlanInput;
   onFinish: (input: PlanInput) => void;
   onExample: () => void;
+  // A plan fetched by code, as a query string.
+  onCode: (search: string) => void;
 }
 
 export function renderWalkthrough(opts: WalkthroughOptions): HTMLElement {
@@ -31,6 +34,7 @@ export function renderWalkthrough(opts: WalkthroughOptions): HTMLElement {
   header.className = 'walk-header';
   header.innerHTML = `<span class="brand">${APP_NAME}</span><h1>${WALK.title}</h1><p class="lede">${TAGLINE} ${WALK.intro}</p>`;
   root.appendChild(header);
+  root.appendChild(codeEntry(opts.onCode));
 
   const progress = document.createElement('ol');
   progress.className = 'walk-steps';
@@ -137,4 +141,60 @@ export function renderWalkthrough(opts: WalkthroughOptions): HTMLElement {
   });
   show();
   return root;
+}
+
+// A plan made on another device is one code away, offered before the first step.
+function codeEntry(onCode: (search: string) => void): HTMLElement {
+  const wrap = document.createElement('section');
+  wrap.className = 'code-entry';
+  const lede = document.createElement('p');
+  lede.className = 'hint-lede';
+  lede.textContent = CODE.have;
+  const lookup = document.createElement('div');
+  lookup.className = 'lookup';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = 'f-code';
+  input.className = 'code-input';
+  input.placeholder = CODE.placeholder;
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  input.setAttribute('autocapitalize', 'characters');
+  input.maxLength = 8;
+  const go = document.createElement('button');
+  go.type = 'button';
+  go.className = 'icon-button';
+  go.innerHTML = `${ICONS.hash}<span>${CODE.open}</span>`;
+  const status = document.createElement('p');
+  status.className = 'lookup-status';
+  status.hidden = true;
+  const row = document.createElement('div');
+  row.className = 'lookup-row code-row';
+  row.append(field(CODE.label, 'hash', input), go);
+  lookup.append(row, status);
+  const say = (msg: string, kind: 'error' | 'busy') => {
+    status.hidden = false;
+    status.className = `lookup-status ${kind}`;
+    status.textContent = msg;
+  };
+  go.addEventListener('click', async () => {
+    say(CODE.looking, 'busy');
+    go.disabled = true;
+    try {
+      onCode(await lookupCode(input.value));
+    } catch (err) {
+      const kind = err instanceof PlanCodeError ? err.code : 'failed';
+      say(CODE.errors[kind] ?? CODE.errors.failed, 'error');
+    } finally {
+      go.disabled = false;
+    }
+  });
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      go.click();
+    }
+  });
+  wrap.append(lede, lookup);
+  return wrap;
 }

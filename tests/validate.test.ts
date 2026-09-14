@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generatePlan } from '../src/algorithm/generate.ts';
 import { clampDays, planProblem } from '../src/algorithm/validate.ts';
-import { hasPlanInUrl, planStillRunning, readInput, writeInput } from '../src/ui/state.ts';
+import { formatCode, hasPlanInUrl, normaliseCode, planStillRunning, readInput, writeInput } from '../src/ui/state.ts';
 import { DEFAULT_INPUT } from '../src/config.ts';
 import type { PlanInput } from '../src/algorithm/types.ts';
 
@@ -34,6 +34,24 @@ describe('reading a plan from the URL', () => {
 
   it('keeps a valid plan unchanged', () => {
     expect(readInput(writeInput(base))).toEqual(base);
+  });
+});
+
+describe('plan codes', () => {
+  it('forgives case, spaces and dashes', () => {
+    expect(normaliseCode(' km7-4px ')).toBe('KM74PX');
+    expect(normaliseCode('KM7 4PX')).toBe('KM74PX');
+  });
+
+  it('rejects the wrong length and letters that look like digits', () => {
+    expect(normaliseCode('KM74P')).toBeNull();
+    expect(normaliseCode('KM74PXA')).toBeNull();
+    expect(normaliseCode('KM74P0')).toBeNull();
+    expect(normaliseCode('KM74PI')).toBeNull();
+  });
+
+  it('shows a code in two groups', () => {
+    expect(formatCode('KM74PX')).toBe('KM7 4PX');
   });
 });
 

@@ -83,6 +83,9 @@ export const HABITUAL_SLEEP_HOURS = { min: 5, max: 11 };
 export const TRAVEL_WAKE_RANGE = { from: '02:00', to: '12:00' };
 
 // Default inputs shown when the page has no query string.
+// Plan codes: letters and digits without look alikes, shown in two groups of three.
+export const PLAN_CODE = { alphabet: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', length: 6 } as const;
+
 export const DEFAULT_INPUT = {
   homeZone: 'Europe/London',
   destZone: 'America/Los_Angeles',

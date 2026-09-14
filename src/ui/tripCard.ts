@@ -1,14 +1,15 @@
 // The trip at a glance with the calendar and link actions and the method behind the plan.
 // While editing, the form takes the card's place with Cancel and Done beneath it.
 import type { Plan, PlanInput } from '../algorithm/types.ts';
-import { COPY_LINK, CREDIT, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, SUMMARY, zoneCity } from '../copy.ts';
+import { CODE, COPY_LINK, CREDIT, DOWNLOAD_ICS, FOOTER, HEADER, LINK_COPIED, SUMMARY, zoneCity } from '../copy.ts';
 import { airportsNow, findAirport } from '../data/airports.ts';
 import { renderForm } from './form.ts';
 import { renderNotify } from './notify.ts';
 import { clock, dayLabel, duration, shortDay, zoneAbbr } from './format.ts';
 import { ICONS } from './icons.ts';
 import { toICS } from './ics.ts';
-import { writeInput } from './state.ts';
+import { PlanCodeError, createCode, issuedCode } from './planCode.ts';
+import { formatCode, writeInput } from './state.ts';
 
 function download(name: string, content: string, type: string): void {
   const blob = new Blob([content], { type });
@@ -18,6 +19,48 @@ function download(name: string, content: string, type: string): void {
   a.download = name;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// Asks the server for a code once, then shows it; tapping the code copies it.
+function codeButton(search: string): { button: HTMLButtonElement; hint: HTMLElement } {
+  const button = iconButton(ICONS.hash, CODE.get, 'code-button');
+  const hint = document.createElement('p');
+  hint.className = 'code-hint';
+  hint.hidden = true;
+  const show = (code: string) => {
+    button.innerHTML = `${ICONS.hash}<span class="code">${formatCode(code)}</span>`;
+    button.classList.add('issued');
+    hint.hidden = false;
+    hint.textContent = CODE.hint;
+  };
+  const known = issuedCode(search);
+  if (known) show(known);
+  button.addEventListener('click', async () => {
+    const known = issuedCode(search);
+    if (known) {
+      await navigator.clipboard.writeText(formatCode(known));
+      button.innerHTML = `${ICONS.check}<span class="code">${formatCode(known)}</span>`;
+      button.setAttribute('aria-label', CODE.copied);
+      setTimeout(() => {
+        button.innerHTML = `${ICONS.hash}<span class="code">${formatCode(known)}</span>`;
+        button.removeAttribute('aria-label');
+      }, 1500);
+      return;
+    }
+    button.disabled = true;
+    button.innerHTML = `${ICONS.hash}<span>${CODE.getting}</span>`;
+    try {
+      show(await createCode(search));
+    } catch (err) {
+      const kind = err instanceof PlanCodeError ? err.code : 'failed';
+      button.innerHTML = `${ICONS.hash}<span>${CODE.get}</span>`;
+      hint.hidden = false;
+      hint.textContent = CODE.errors[kind] ?? CODE.errors.failed;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  return { button, hint };
 }
 
 function iconButton(iconHtml: string, label: string, cls = ''): HTMLButtonElement {
@@ -123,8 +166,10 @@ export function renderTripCard(plan: Plan, input: PlanInput, opts: TripCardOptio
   });
   const edit = iconButton(ICONS.edit, HEADER.editTrip, 'edit-toggle');
   edit.addEventListener('click', () => opts.onEdit());
-  actions.append(ics, link, edit);
+  const { button: code, hint: codeHint } = codeButton(writeInput(input));
+  actions.append(ics, link, code, edit);
   card.appendChild(actions);
+  card.appendChild(codeHint);
   card.appendChild(renderNotify(writeInput(input)));
   card.appendChild(renderHowLede());
   return card;

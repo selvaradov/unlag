@@ -572,6 +572,11 @@ function renderWalkthroughPage(): void {
         render();
         scrollToNow(false);
       },
+      onCode: (search) => {
+        applyInput(readInput(search), 'push');
+        render();
+        scrollToNow(false);
+      },
     }),
   );
 }
