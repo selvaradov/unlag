@@ -181,12 +181,25 @@ function maxRate(direction: Direction, postArrival: boolean, achieved: number): 
   return cfg.PREFLIGHT_MAX_RATE[direction] * achieved;
 }
 
-export function generatePlan(input: PlanInput): Plan {
+// The flight as instants, and the direction and size of the shift.
+function setup(input: PlanInput) {
   const depart = DateTime.fromISO(input.flight.depart, { zone: input.homeZone }).toMillis();
   const arrive = DateTime.fromISO(input.flight.arrive, { zone: input.destZone }).toMillis();
-  const flight: Interval = { start: depart, end: arrive };
   const { direction, total } = chooseDirection(delayHours(depart, arrive, input));
   const sign = direction === 'delay' ? 1 : -1;
+  return { depart, arrive, direction, total, sign };
+}
+
+// The travel day wake the plan chooses when none is given, as a home clock time.
+export function automaticTravelDayWake(input: PlanInput): string {
+  const { depart, sign, total } = setup(input);
+  const home = homeNights({ ...input, travelDayWake: undefined }, depart, sign, total);
+  return DateTime.fromMillis(home[home.length - 1].end, { zone: input.homeZone }).toFormat('HH:mm');
+}
+
+export function generatePlan(input: PlanInput): Plan {
+  const { depart, arrive, direction, total, sign } = setup(input);
+  const flight: Interval = { start: depart, end: arrive };
 
   const home = homeNights(input, depart, sign, total);
   const lastHomeWake = home[home.length - 1].end;

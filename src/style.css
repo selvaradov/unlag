@@ -1488,27 +1488,6 @@ dialog.sheet::backdrop {
   margin: 0 0 4px -8px;
 }
 
-/* Travel day wake */
-
-.travel-wake {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  align-items: center;
-}
-
-.travel-wake .check {
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-  color: var(--ink);
-  font-size: 0.85rem;
-}
-
-.travel-wake select {
-  min-width: 6em;
-}
-
 /* Notifications */
 
 .notify {

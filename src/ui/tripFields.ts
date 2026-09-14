@@ -1,6 +1,7 @@
 // The trip inputs as reusable controls, shared by the edit form and the walkthrough.
 import { DateTime } from 'luxon';
 import type { CaffeineHabit, PlanInput } from '../algorithm/types.ts';
+import { automaticTravelDayWake } from '../algorithm/generate.ts';
 import { planProblem } from '../algorithm/validate.ts';
 import { BEDTIME_RANGE, TIME_STEP_MINUTES, TRAVEL_WAKE_RANGE, WAKE_RANGE } from '../config.ts';
 import { FORM, LOOKUP } from '../copy.ts';
@@ -58,6 +59,9 @@ function timeSelect(value: string, range: { from: string; to: string }, id: stri
   return sel;
 }
 
+// Value of the travel day wake option that leaves the choice to the plan.
+const AUTO = 'auto';
+
 function text(value: string, attrs: Record<string, string> = {}): HTMLInputElement {
   const i = document.createElement('input');
   i.value = value;
@@ -101,6 +105,7 @@ export function createTripFields(input: PlanInput, onChange: () => void): TripFi
     placeholder: FORM.airportPlaceholder,
     onPick: (a) => {
       home = a;
+      refreshTravelWake();
       onChange();
     },
   });
@@ -110,6 +115,7 @@ export function createTripFields(input: PlanInput, onChange: () => void): TripFi
     placeholder: FORM.airportPlaceholder,
     onPick: (a) => {
       dest = a;
+      refreshTravelWake();
       onChange();
     },
   });
@@ -128,20 +134,12 @@ export function createTripFields(input: PlanInput, onChange: () => void): TripFi
   });
   const bed = timeSelect(input.habitualBed, BEDTIME_RANGE, 'f-bed');
   const wake = timeSelect(input.habitualWake, WAKE_RANGE, 'f-wake');
-  // Travel day wake: as usual unless the box is unticked, which reveals a time.
-  const usualWake = text('', { type: 'checkbox', id: 'f-travel-usual' });
-  usualWake.checked = !input.travelDayWake;
-  const travelWake = timeSelect(input.travelDayWake ?? '06:00', TRAVEL_WAKE_RANGE, 'f-travel-wake');
-  travelWake.hidden = usualWake.checked;
-  usualWake.addEventListener('change', () => {
-    travelWake.hidden = usualWake.checked;
-  });
-  const travelWakeBox = document.createElement('div');
-  travelWakeBox.className = 'travel-wake';
-  const usualLabel = document.createElement('label');
-  usualLabel.className = 'check';
-  usualLabel.append(usualWake, document.createTextNode(FORM.travelWakeUsual));
-  travelWakeBox.append(usualLabel, travelWake);
+  // Travel day wake: the plan's own choice, shown as a time, unless a time is picked instead.
+  const travelWake = timeSelect(input.travelDayWake ?? '', TRAVEL_WAKE_RANGE, 'f-travel-wake');
+  const autoWake = document.createElement('option');
+  autoWake.value = AUTO;
+  travelWake.insertBefore(autoWake, travelWake.firstChild);
+  if (!input.travelDayWake) travelWake.value = AUTO;
   const pre = text(String(input.preflightDays), { type: 'number', min: '0', max: '3', id: 'f-pre' });
   const post = text(String(input.postDays), { type: 'number', min: '1', max: '10', id: 'f-post' });
   const caffeine = document.createElement('select');
@@ -157,6 +155,36 @@ export function createTripFields(input: PlanInput, onChange: () => void): TripFi
   melatonin.checked = input.melatonin;
   const lightBox = text('', { type: 'checkbox', id: 'f-lightbox' });
   lightBox.checked = input.lightBox;
+
+  const read = (): PlanInput | null => {
+    if (!depart.value || !arrive.value || !bed.value || !wake.value) return null;
+    return {
+      homeZone: home?.tz ?? input.homeZone,
+      destZone: dest?.tz ?? input.destZone,
+      homeAirport: home?.code ?? input.homeAirport,
+      destAirport: dest?.code ?? input.destAirport,
+      habitualBed: bed.value,
+      habitualWake: wake.value,
+      flight: { depart: depart.value, arrive: arrive.value },
+      travelDayWake: travelWake.value === AUTO ? undefined : travelWake.value,
+      preflightDays: Math.max(0, Math.min(3, Number(pre.value) || 0)),
+      postDays: Math.max(1, Math.min(10, Number(post.value) || 1)),
+      caffeine: caffeine.value as CaffeineHabit,
+      melatonin: melatonin.checked,
+      lightBox: lightBox.checked,
+    };
+  };
+
+  // The automatic option carries the time the plan would pick, and the hint says what is being chosen.
+  const travelField = field(FORM.travelWake, 'clock', travelWake, { cls: 'wide-field', hint: FORM.travelWakeAutoHint });
+  const travelHint = travelField.querySelector('.hint')!;
+  const refreshTravelWake = () => {
+    const current = read();
+    autoWake.textContent = current ? FORM.travelWakeAuto(automaticTravelDayWake(current)) : FORM.travelWakeAutoPending;
+    travelHint.textContent = travelWake.value === AUTO ? FORM.travelWakeAutoHint : FORM.travelWakeHint;
+  };
+  for (const el of [bed, wake, depart, arrive, pre, travelWake]) el.addEventListener('change', refreshTravelWake);
+  refreshTravelWake();
 
   // Flight number lookup fills the airports and times in.
   const lookup = document.createElement('div');
@@ -213,6 +241,7 @@ export function createTripFields(input: PlanInput, onChange: () => void): TripFi
         ),
         'ok',
       );
+      refreshTravelWake();
       onChange();
     } catch (err) {
       const code = err instanceof FlightLookupError ? err.code : 'failed';
@@ -232,24 +261,6 @@ export function createTripFields(input: PlanInput, onChange: () => void): TripFi
   error.className = 'form-error';
   error.hidden = true;
 
-  const read = (): PlanInput | null => {
-    if (!depart.value || !arrive.value || !bed.value || !wake.value) return null;
-    return {
-      homeZone: home?.tz ?? input.homeZone,
-      destZone: dest?.tz ?? input.destZone,
-      homeAirport: home?.code ?? input.homeAirport,
-      destAirport: dest?.code ?? input.destAirport,
-      habitualBed: bed.value,
-      habitualWake: wake.value,
-      flight: { depart: depart.value, arrive: arrive.value },
-      travelDayWake: usualWake.checked ? undefined : travelWake.value,
-      preflightDays: Math.max(0, Math.min(3, Number(pre.value) || 0)),
-      postDays: Math.max(1, Math.min(10, Number(post.value) || 1)),
-      caffeine: caffeine.value as CaffeineHabit,
-      melatonin: melatonin.checked,
-      lightBox: lightBox.checked,
-    };
-  };
   const hasAirports = () => Boolean((home ?? input.homeAirport) && (dest ?? input.destAirport));
   const check = (): PlanInput | null => {
     const next = read();
@@ -277,11 +288,7 @@ export function createTripFields(input: PlanInput, onChange: () => void): TripFi
       field(FORM.depart, 'clock', depart, { cls: 'wide-field' }),
       field(FORM.arrive, 'clock', arrive, { cls: 'wide-field' }),
     ],
-    sleep: [
-      field(FORM.bed, 'bed', bed),
-      field(FORM.wake, 'clock', wake),
-      field(FORM.travelWake, 'clock', travelWakeBox, { cls: 'wide-field', hint: FORM.travelWakeHint }),
-    ],
+    sleep: [field(FORM.bed, 'bed', bed), field(FORM.wake, 'clock', wake), travelField],
     options: [
       field(FORM.preflightDays, 'days', pre, { hint: FORM.preflightHint }),
       field(FORM.postDays, 'days', post, { hint: FORM.postHint }),
