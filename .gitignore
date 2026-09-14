@@ -6,3 +6,6 @@ analysis/plan.json
 # Local Netlify folder
 .netlify
 .env
+
+# Working notes
+plans
