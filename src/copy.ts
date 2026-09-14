@@ -280,7 +280,7 @@ export const LOOKUP = {
 
 export const WALK = {
   title: 'Plan a trip',
-  intro: 'Three short steps. Everything stays in the page address, so the plan is yours to bookmark or share.',
+  intro: 'Three short steps.',
   steps: ['Your flight', 'Your sleep', 'Options'],
   flightHint: 'Type the flight number and date, or pick the airports and enter the times yourself.',
   sleepHint: 'Your usual bedtime and wake time at home. The plan shifts them a little each day.',

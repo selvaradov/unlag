@@ -1449,10 +1449,10 @@ dialog.sheet::backdrop {
   transform: rotate(-90deg);
 }
 
-.walkthrough .example {
-  display: block;
-  margin: 24px auto 0;
-  color: var(--muted);
+.code-row .example {
+  flex-basis: 100%;
+  text-align: left;
+  padding: 4px 0 0;
 }
 
 /* Development only: fills the example flight on the first step */
@@ -1577,6 +1577,7 @@ dialog.sheet::backdrop {
 
 .code-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }

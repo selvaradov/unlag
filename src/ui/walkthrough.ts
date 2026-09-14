@@ -34,7 +34,7 @@ export function renderWalkthrough(opts: WalkthroughOptions): HTMLElement {
   header.className = 'walk-header';
   header.innerHTML = `<span class="brand">${APP_NAME}</span><h1>${WALK.title}</h1><p class="lede">${TAGLINE} ${WALK.intro}</p>`;
   root.appendChild(header);
-  root.appendChild(codeEntry(opts.onCode));
+  root.appendChild(codeEntry(opts));
 
   const progress = document.createElement('ol');
   progress.className = 'walk-steps';
@@ -93,12 +93,6 @@ export function renderWalkthrough(opts: WalkthroughOptions): HTMLElement {
   nav.append(back, next);
   root.appendChild(nav);
 
-  const example = document.createElement('button');
-  example.type = 'button';
-  example.className = 'text-button example';
-  example.textContent = WALK.example;
-  example.addEventListener('click', () => opts.onExample());
-  root.appendChild(example);
   const credit = document.createElement('p');
   credit.className = 'footer credit';
   credit.innerHTML = CREDIT;
@@ -143,8 +137,9 @@ export function renderWalkthrough(opts: WalkthroughOptions): HTMLElement {
   return root;
 }
 
-// A plan made on another device is one code away, offered before the first step.
-function codeEntry(onCode: (search: string) => void): HTMLElement {
+// A plan made on another device is one code away, offered before the first step, with the
+// example plan beside it for anyone who just wants a look.
+function codeEntry(opts: Pick<WalkthroughOptions, 'onCode' | 'onExample'>): HTMLElement {
   const wrap = document.createElement('section');
   wrap.className = 'code-entry';
   const lede = document.createElement('p');
@@ -170,7 +165,12 @@ function codeEntry(onCode: (search: string) => void): HTMLElement {
   status.hidden = true;
   const row = document.createElement('div');
   row.className = 'code-row';
-  row.append(input, go);
+  const example = document.createElement('button');
+  example.type = 'button';
+  example.className = 'text-button example';
+  example.textContent = WALK.example;
+  example.addEventListener('click', () => opts.onExample());
+  row.append(input, go, example);
   lookup.append(row, status);
   const say = (msg: string, kind: 'error' | 'busy') => {
     status.hidden = false;
@@ -181,7 +181,7 @@ function codeEntry(onCode: (search: string) => void): HTMLElement {
     say(CODE.looking, 'busy');
     go.disabled = true;
     try {
-      onCode(await lookupCode(input.value));
+      opts.onCode(await lookupCode(input.value));
     } catch (err) {
       const kind = err instanceof PlanCodeError ? err.code : 'failed';
       say(CODE.errors[kind] ?? CODE.errors.failed, 'error');
