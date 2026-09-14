@@ -390,6 +390,12 @@ function sheet(title: string, body: HTMLElement, cls: string): HTMLDialogElement
   close.addEventListener('click', () => dialog.close());
   head.appendChild(close);
   dialog.append(head, body);
+  // A tap on the backdrop lands on the dialog itself, outside its box.
+  dialog.addEventListener('click', (ev) => {
+    const r = dialog.getBoundingClientRect();
+    const outside = ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom;
+    if (ev.target === dialog && outside) dialog.close();
+  });
   return dialog;
 }
 
