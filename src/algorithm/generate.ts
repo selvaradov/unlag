@@ -79,11 +79,12 @@ function destinationNights(input: PlanInput, arrive: number, lastWake: number): 
   const untilWake = (wakeClock - landedAt + 24) % 24;
   let bed: number;
   let wake: number;
-  if (untilBed <= cfg.EVENING_LANDING_HOURS_BEFORE_BED || untilWake < untilBed) {
+  const nightLanding =
+    untilWake < untilBed && untilWake - cfg.LANDING_TO_BED_HOURS >= cfg.MIN_NIGHT_LANDING_SLEEP_HOURS;
+  if (untilBed <= cfg.EVENING_LANDING_HOURS_BEFORE_BED || nightLanding) {
     // Evening or night landing: bed soon after landing, up at the usual time, never a short night.
     bed = arrive + cfg.LANDING_TO_BED_HOURS * HOUR;
-    wake = bed + untilWake * HOUR - cfg.LANDING_TO_BED_HOURS * HOUR;
-    while (wake <= bed) wake += DAY;
+    wake = arrive + untilWake * HOUR;
     if (wake - bed < cfg.MIN_SLEEP_HOURS * HOUR) wake = bed + cfg.MIN_SLEEP_HOURS * HOUR;
   } else {
     // Daytime landing: tonight's usual bedtime, a little earlier after a very long day.
@@ -115,7 +116,109 @@ function inFlightSleep(flight: Interval, tminNearFlight: number): Sleep | null {
   };
   const overlap = intersect(night, usable);
   if (!overlap || hours(overlap) < cfg.MIN_INFLIGHT_SLEEP_HOURS) return null;
-  return { ...overlap, inFlight: true };
+  return { ...roundWithin(overlap, usable, cfg.SLEEP_ROUNDING_MINUTES), inFlight: true };
+}
+
+// Round both ends of an interval to the step, kept inside the bounds.
+function roundWithin(i: Interval, bounds: Interval, minutes: number): Interval {
+  return {
+    start: Math.max(bounds.start, roundTo(i.start, minutes)),
+    end: Math.min(bounds.end, roundTo(i.end, minutes)),
+  };
+}
+
+function roundInterval(i: Interval, minutes: number): Interval {
+  return { start: roundTo(i.start, minutes), end: roundTo(i.end, minutes) };
+}
+
+// Hours of nap for a waking stretch. The nap grows with the stretch, and grows further when the hours
+// awake across the whole stretch would otherwise be too many.
+export function napHours(awake: number): number {
+  const { min, max, ceiling } = cfg.NAP_LENGTH_HOURS;
+  const forStretch = Math.min(awake - cfg.NAP_TARGET_WAKE_HOURS, max);
+  const forTotal = awake - cfg.MAX_TOTAL_WAKE_HOURS;
+  const wanted = Math.min(Math.max(forStretch, forTotal, min), ceiling);
+  return Math.round(wanted / (cfg.SLEEP_ROUNDING_MINUTES / 60)) * (cfg.SLEEP_ROUNDING_MINUTES / 60);
+}
+
+interface NapSetting {
+  wake: number;
+  bed: number;
+  required: boolean;
+  plane: Interval;
+  seek: Interval[];
+  avoid: Interval[];
+  tmins: number[];
+}
+
+// Where a nap of the given length goes. It stays at least an hour after wake and eight before bed, never in a
+// seek light window, and a required nap tries to keep the time awake on either side of it bounded. Then it
+// prefers the plane, an avoid light window, and the easy hours of the body clock, and steers clear of the
+// evening hours when sleep is hard.
+function placeNap(length: number, n: NapSetting): Interval | null {
+  const L = length * HOUR;
+  const hard: Interval = {
+    start: n.wake + cfg.NAP_EARLIEST_HOURS_AFTER_WAKE * HOUR,
+    end: n.bed - cfg.NAP_MIN_HOURS_BEFORE_BED * HOUR,
+  };
+  let feasible = subtract(hard, n.seek);
+  if (n.required) {
+    const around = cfg.MAX_WAKE_AROUND_NAP_HOURS * HOUR;
+    const bounded = feasible
+      .map((f) => intersect(f, { start: n.bed - around - L, end: n.wake + around + L }))
+      .filter((f): f is Interval => f !== null && f.end - f.start >= L);
+    if (bounded.length) feasible = bounded;
+  }
+  const easy = n.tmins.map((t) => ({
+    start: t + cfg.EASY_SLEEP_HOURS_AFTER_TMIN.start * HOUR,
+    end: t + cfg.EASY_SLEEP_HOURS_AFTER_TMIN.end * HOUR,
+  }));
+  const hardToSleep = n.tmins.map((t) => ({
+    start: t - cfg.HARD_SLEEP_HOURS_BEFORE_TMIN.start * HOUR,
+    end: t - cfg.HARD_SLEEP_HOURS_BEFORE_TMIN.end * HOUR,
+  }));
+  const anywhere = [{ start: -Infinity, end: Infinity }];
+  const notHard = subtract({ start: n.wake, end: n.bed }, hardToSleep);
+  const preferences: { within: Interval[]; startIn: Interval[] }[] = [
+    { within: [n.plane], startIn: n.avoid },
+    { within: [n.plane], startIn: easy },
+    { within: [n.plane], startIn: notHard },
+    { within: [n.plane], startIn: anywhere },
+    { within: anywhere, startIn: n.avoid },
+    { within: anywhere, startIn: easy },
+    { within: anywhere, startIn: anywhere },
+  ];
+  for (const pref of preferences) {
+    for (const f of feasible) {
+      for (const w of pref.within) {
+        const container = intersect(f, w);
+        if (!container) continue;
+        for (const p of pref.startIn) {
+          const slot = intersect(container, p);
+          if (!slot || slot.end - slot.start < 30 * MINUTE) continue;
+          const nap = fit(slot.start, L, container);
+          if (nap) return nap;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// A nap starting at the given time, pushed earlier when it would overrun the container, then rounded.
+function fit(start: number, L: number, container: Interval): Interval | null {
+  let s = roundTo(start, cfg.SLEEP_ROUNDING_MINUTES);
+  let e = s + L;
+  if (e > container.end) {
+    e = roundTo(container.end, cfg.SLEEP_ROUNDING_MINUTES);
+    if (e > container.end) e -= cfg.SLEEP_ROUNDING_MINUTES * MINUTE;
+    s = e - L;
+  }
+  if (s < container.start) {
+    s = roundTo(container.start, cfg.SLEEP_ROUNDING_MINUTES);
+    if (s < container.start) s += cfg.SLEEP_ROUNDING_MINUTES * MINUTE;
+  }
+  return e - s >= 30 * MINUTE ? { start: s, end: e } : null;
 }
 
 function zoneAt(t: number, arrive: number, input: PlanInput): string {
@@ -239,13 +342,17 @@ export function generatePlan(input: PlanInput): Plan {
     const provisional = tmin + DAY + sign * Math.min(remaining, maxRate(direction, postArrival, 1)) * HOUR;
     let windows = lightWindows(direction, tmin, provisional, sleeps, arrive, input);
     const earned = Math.min(remaining, maxRate(direction, postArrival, windows.achieved));
-    const next = roundTo(tmin + DAY + sign * earned * HOUR, 5);
+    const next = tmin + DAY + sign * earned * HOUR;
     if (next !== provisional) windows = lightWindows(direction, tmin, next, sleeps, arrive, input);
     remaining -= earned;
-    for (const p of windows.seek) if (p.start < planEnd && p.end > planStart) events.push({ kind: 'light', ...p });
-    for (const p of windows.avoid) if (p.start < planEnd && p.end > planStart) events.push({ kind: 'dark', ...p });
+    const shown = (pieces: Interval[]) =>
+      pieces
+        .map((p) => roundInterval(p, cfg.TMIN_ROUNDING_MINUTES))
+        .filter((p) => p.end > p.start && p.start < planEnd && p.end > planStart);
+    for (const p of shown(windows.seek)) events.push({ kind: 'light', ...p });
+    for (const p of shown(windows.avoid)) events.push({ kind: 'dark', ...p });
     if (direction === 'advance' && input.melatonin && remaining > 0.01) {
-      const at = next - cfg.MELATONIN_ADVANCE_HOURS_BEFORE_TMIN * HOUR;
+      const at = roundTo(next - cfg.MELATONIN_ADVANCE_HOURS_BEFORE_TMIN * HOUR, cfg.TMIN_ROUNDING_MINUTES);
       if (!contains(sleeps, at) && at > planStart && at < planEnd) {
         events.push({ kind: 'melatonin', start: at, end: at, note: cfg.MELATONIN_ADVANCE_DOSE });
       }
@@ -263,6 +370,7 @@ export function generatePlan(input: PlanInput): Plan {
 
   // Naps for long waking stretches, caffeine windows and doses, melatonin as a sleep aid for delays.
   const darks = events.filter((e) => e.kind === 'dark');
+  const lights = events.filter((e) => e.kind === 'light');
   const cutoffHours = input.caffeine === 'off' ? null : cfg.CAFFEINE_CUTOFF_HOURS[input.caffeine];
   const flightUsable: Interval = {
     start: flight.start + cfg.INFLIGHT_SLEEP_MARGIN_MINUTES * MINUTE,
@@ -275,21 +383,19 @@ export function generatePlan(input: PlanInput): Plan {
     const awake = (bed - wake) / HOUR;
     let nap: Interval | null = null;
     if (awake > cfg.LONG_WAKE_HOURS) {
-      const allowed: Interval = {
-        start: wake + cfg.NAP_EARLIEST_HOURS_AFTER_WAKE * HOUR,
-        end: bed - cfg.NAP_MIN_HOURS_BEFORE_BED * HOUR,
-      };
-      // Prefer napping on the plane, in the dark window if it falls there, then any dark window, then as early as allowed.
-      const candidates: (Interval | null)[] = [
-        ...darks.map((d) => intersect(intersect(d, flightUsable) ?? { start: 0, end: 0 }, allowed)),
-        intersect(flightUsable, allowed),
-        ...darks.map((d) => intersect(d, allowed)),
-        allowed,
-      ];
-      const pick = candidates.find((c) => c && c.end - c.start >= 30 * MINUTE);
-      if (pick) {
-        nap = { start: pick.start, end: Math.min(pick.end, pick.start + cfg.NAP_MAX_MINUTES * MINUTE) };
-        events.push({ kind: 'nap', ...nap, optional: true });
+      const required = awake > cfg.REQUIRED_NAP_WAKE_HOURS;
+      nap = placeNap(napHours(awake), {
+        wake,
+        bed,
+        required,
+        plane: flightUsable,
+        seek: lights,
+        avoid: darks,
+        tmins: tmins.map((t) => t.at),
+      });
+      if (nap) {
+        const onBoard = nap.start >= flight.start && nap.end <= flight.end;
+        events.push({ kind: 'nap', ...nap, optional: !required, note: onBoard ? 'onBoard' : undefined });
       }
     }
     if (cutoffHours !== null) {

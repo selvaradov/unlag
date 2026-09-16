@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { describe, expect, it } from 'vitest';
-import { chooseDirection, generatePlan } from '../src/algorithm/generate.ts';
+import { chooseDirection, generatePlan, napHours } from '../src/algorithm/generate.ts';
 import type { Plan, PlanEvent, PlanInput } from '../src/algorithm/types.ts';
 import { DEFAULT_INPUT } from '../src/config.ts';
 import { HOUR } from '../src/algorithm/time.ts';
@@ -65,13 +65,20 @@ describe('London to San Francisco on UA 900', () => {
     expect(events(plan, 'dark')).toContain('Wed 06:30-Wed 09:45');
   });
 
-  it('naps on the plane, not at the airport, and keeps caffeine until after the nap', () => {
-    const nap = plan.events.find((e) => e.kind === 'nap');
-    expect(nap).toBeDefined();
-    expect(nap!.start).toBeGreaterThan(plan.depart);
-    expect(nap!.end).toBeLessThan(plan.arrive);
+  it('requires a four hour nap in the body afternoon on the plane and keeps caffeine until after it', () => {
+    const nap = plan.events.find((e) => e.kind === 'nap')!;
+    expect(events(plan, 'nap')).toEqual(['Wed 14:00-Wed 18:00']);
+    expect(nap.optional).toBe(false);
+    expect(nap.note).toBe('onBoard');
     const caffeine = plan.events.filter((e) => e.kind === 'caffeine').find((e) => e.start >= plan.depart);
-    expect(caffeine!.start).toBe(nap!.end);
+    expect(caffeine!.start).toBe(nap.end);
+  });
+
+  it('shows light windows on the quarter hour', () => {
+    for (const e of plan.events.filter((e) => e.kind === 'light' || e.kind === 'dark')) {
+      expect(DateTime.fromMillis(e.start).minute % 15).toBe(0);
+      expect(DateTime.fromMillis(e.end).minute % 15).toBe(0);
+    }
   });
 
   it('puts the shifting light in the destination evening and bed early on the first night', () => {
@@ -128,6 +135,82 @@ describe('options', () => {
   });
 });
 
+describe('naps', () => {
+  it('grow with the day, then hold the waking total at twenty four hours', () => {
+    expect(napHours(19)).toBe(1.5);
+    expect(napHours(21)).toBe(3);
+    expect(napHours(23.5)).toBe(4);
+    expect(napHours(27)).toBe(4);
+    expect(napHours(30)).toBe(6);
+    expect(napHours(40)).toBe(6);
+  });
+
+  it('are optional on a day of twenty hours or less', () => {
+    // London to Halifax, a four hour delay, bed at 22:00 local after a 19.5 hour day.
+    const plan = generatePlan({
+      ...base,
+      destZone: 'America/Halifax',
+      flight: { depart: '2026-09-16T10:35', arrive: '2026-09-16T13:35' },
+    });
+    const nap = plan.events.find((e) => e.kind === 'nap')!;
+    expect(nap.optional).toBe(true);
+    expect((nap.end - nap.start) / HOUR).toBe(1.5);
+  });
+
+  it('are kept out of seek light windows', () => {
+    for (const input of [
+      base,
+      { ...base, destZone: 'Asia/Tokyo', flight: { depart: '2026-09-16T09:30', arrive: '2026-09-17T06:00' } },
+    ]) {
+      const plan = generatePlan(input);
+      const lights = plan.events.filter((e) => e.kind === 'light');
+      for (const nap of plan.events.filter((e) => e.kind === 'nap')) {
+        expect(lights.some((l) => l.start < nap.end && l.end > nap.start)).toBe(false);
+      }
+    }
+  });
+});
+
+describe('day flight to Tokyo landing at dawn', () => {
+  const plan = generatePlan({
+    ...base,
+    destZone: 'Asia/Tokyo',
+    flight: { depart: '2026-09-16T09:30', arrive: '2026-09-17T06:00' },
+    travelDayWake: undefined,
+  });
+
+  it('treats the landing as a morning and sleeps that night at an early bedtime', () => {
+    expect(events(plan, 'sleep').filter((s) => s.startsWith('Thu'))).toEqual(['Thu 22:00-Fri 07:00']);
+  });
+
+  it('sleeps for most of the second half of the flight', () => {
+    const nap = plan.events.find((e) => e.kind === 'nap')!;
+    expect(nap.optional).toBe(false);
+    expect((nap.end - nap.start) / HOUR).toBeGreaterThanOrEqual(5);
+    expect(nap.end).toBeLessThanOrEqual(plan.arrive - HOUR / 2);
+    expect(plan.arrive - nap.end).toBeLessThan(HOUR);
+  });
+});
+
+describe('London to Sydney via Singapore', () => {
+  const plan = generatePlan({
+    ...base,
+    destZone: 'Australia/Sydney',
+    flight: { depart: '2026-09-16T21:00', arrive: '2026-09-18T06:30' },
+    travelDayWake: undefined,
+  });
+
+  it('sleeps the body night on board then a second long sleep before landing', () => {
+    const onBoard = plan.events.find((e) => e.kind === 'sleep' && e.note === 'onBoard')!;
+    expect(local(plan, onBoard.start)).toBe('Wed 22:00');
+    const nap = plan.events.find((e) => e.kind === 'nap')!;
+    expect(nap.start).toBeGreaterThan(onBoard.end + 8 * HOUR);
+    expect((nap.end - nap.start) / HOUR).toBe(6);
+    expect(nap.note).toBe('onBoard');
+    expect(events(plan, 'sleep').filter((s) => s.startsWith('Fri'))).toEqual(['Fri 22:00-Sat 07:00']);
+  });
+});
+
 describe('landing late', () => {
   const flight = (arrive: string) =>
     generatePlan({ ...base, flight: { depart: '2026-09-16T10:35', arrive }, preflightDays: 1 });
@@ -146,6 +229,13 @@ describe('landing late', () => {
     const night = firstNight(plan);
     expect(local(plan, night.start)).toBe('Thu 04:30');
     expect(local(plan, night.end)).toBe('Thu 11:00');
+  });
+
+  it('stays up after a landing an hour or two before habitual wake', () => {
+    const plan = flight('2026-09-17T05:00');
+    const night = firstNight(plan);
+    expect(local(plan, night.start)).toBe('Thu 22:00');
+    expect(local(plan, night.end)).toBe('Fri 07:00');
   });
 
   it("keeps tonight's bedtime after a daytime landing", () => {

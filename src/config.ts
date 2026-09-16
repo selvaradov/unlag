@@ -40,15 +40,34 @@ export const MIN_SLEEP_HOURS = 6.5;
 // Default wake on the travel day, hours before departure, when none is given.
 export const DEFAULT_TRAVEL_WAKE_BEFORE_DEPARTURE_HOURS = 4;
 
-// An awake stretch longer than this earns a nap slot.
+// An awake stretch longer than this earns a nap. The nap is optional up to the second figure and required beyond it.
 export const LONG_WAKE_HOURS = 18;
-export const NAP_MAX_MINUTES = 90;
+export const REQUIRED_NAP_WAKE_HOURS = 20;
+// Nap length is the stretch minus the target, between min and max. It grows past max, up to the ceiling,
+// when the hours awake across the whole stretch would otherwise exceed MAX_TOTAL_WAKE_HOURS.
+export const NAP_TARGET_WAKE_HOURS = 18;
+export const NAP_LENGTH_HOURS = { min: 1.5, max: 4, ceiling: 6 };
+export const MAX_TOTAL_WAKE_HOURS = 24;
+// A required nap tries to keep the time awake on either side of it within this.
+export const MAX_WAKE_AROUND_NAP_HOURS = 16;
 export const NAP_MIN_HOURS_BEFORE_BED = 8;
 export const NAP_EARLIEST_HOURS_AFTER_WAKE = 1;
+// Naps at least this long are called sleep.
+export const LONG_NAP_IS_SLEEP_HOURS = 4;
+
+// Body clock hours, relative to Tmin, when falling asleep is easy (the early afternoon) and hard (the evening).
+export const EASY_SLEEP_HOURS_AFTER_TMIN = { start: 8, end: 12 };
+export const HARD_SLEEP_HOURS_BEFORE_TMIN = { start: 8, end: 5 };
+
+// Shown times are rounded. Light windows and melatonin hang off the Tmin estimate; naps and sleep on board are coarser.
+export const TMIN_ROUNDING_MINUTES = 15;
+export const SLEEP_ROUNDING_MINUTES = 30;
 
 // Landing within this many hours before habitual bedtime, or during the night, means sleeping soon after landing.
+// A night landing needs room for at least the minimum sleep before habitual wake, otherwise it is a morning arrival.
 export const EVENING_LANDING_HOURS_BEFORE_BED = 3;
 export const LANDING_TO_BED_HOURS = 1.5;
+export const MIN_NIGHT_LANDING_SLEEP_HOURS = 2;
 
 // A first destination night may start this much earlier than habitual bedtime when the day has been very long.
 export const EARLY_FIRST_BED_HOURS = 1;

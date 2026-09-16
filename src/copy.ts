@@ -1,5 +1,7 @@
 // Every user facing string. Instruction text for an event is built here from its kind and context.
 import type { Direction, EventKind, PlanEvent } from './algorithm/types.ts';
+import { HOUR } from './algorithm/time.ts';
+import { LONG_NAP_IS_SLEEP_HOURS } from './config.ts';
 
 export const APP_NAME = 'Unlag';
 export const TAGLINE = 'A jet lag schedule from your flight and your sleep.';
@@ -25,12 +27,19 @@ export interface EventContext {
   endsAtBed: boolean;
 }
 
+// A required nap long enough to count as a short night is called sleep.
+export function napIsSleep(e: PlanEvent): boolean {
+  return !e.optional && e.end - e.start >= LONG_NAP_IS_SLEEP_HOURS * HOUR;
+}
+
 export function eventTitle(e: PlanEvent): string {
   switch (e.kind) {
     case 'sleep':
       return e.note === 'onBoard' ? 'sleep on the plane' : 'sleep';
     case 'nap':
-      return 'nap if you can';
+      if (e.optional) return 'nap if you can';
+      if (!napIsSleep(e)) return 'nap';
+      return e.note === 'onBoard' ? 'sleep on the plane' : 'sleep';
     case 'caffeineDose':
       return `caffeine, ${e.note}`;
     case 'melatonin':
@@ -47,7 +56,9 @@ export function eventInstruction(e: PlanEvent, ctx: EventContext): string {
         ? 'This is your body night. Eye mask, earplugs, no screens.'
         : 'Dark room. Phone face down.';
     case 'nap':
-      return 'Optional. Eye mask on, alarm set. Keeps the long day bearable without eating into tonight.';
+      return e.optional
+        ? 'Optional. Eye mask on, alarm set. Keeps the long day bearable without eating into tonight.'
+        : `Not optional. Eye mask on, alarm set for ${ctx.endClock}. This splits a very long day into two your body can manage.`;
     case 'light': {
       const how = ctx.daylight
         ? 'Get outside without sunglasses if you can. Otherwise the brightest room available, lights on, screens bright.'
@@ -139,6 +150,7 @@ export const HEADLINE = {
   nowSleep: (until: string) => `sleep until ${until}`,
   nowSleepOnBoard: (until: string) => `sleep on the plane until ${until}`,
   nowNap: (until: string) => `nap if you can, until ${until}`,
+  nowNapRequired: (until: string) => `nap until ${until}`,
   nowSunglasses: (until: string) => `sunglasses on until ${until}`,
   nowDim: (until: string) => `keep the lights low until ${until}`,
   nowOutside: (until: string) => `get outside in the light until ${until}`,
@@ -148,6 +160,7 @@ export const HEADLINE = {
   nextBed: (at: string) => `then bed${at}`,
   nextSleepOnBoard: (at: string) => `then sleep on the plane${at}`,
   nextNap: (at: string) => `then a nap${at}`,
+  nextSleep: (at: string) => `then sleep${at}`,
   nextSunglasses: (at: string) => `then sunglasses on${at}`,
   nextDim: (at: string) => `then lights low${at}`,
   nextBright: (at: string) => `then bright light${at}`,
@@ -245,7 +258,7 @@ export const METHOD: { title: string; text: string }[] = [
   },
   {
     title: 'Sleep is protected',
-    text: 'Bedtime shifts by up to an hour a day before the flight, but a night is never cut below six and a half hours. If a long day is unavoidable a nap of up to ninety minutes is offered, on the plane where possible, at least eight hours before the next bedtime.',
+    text: "Bedtime shifts by up to an hour a day before the flight, but a night is never cut below six and a half hours. A day over eighteen hours gets a nap, optional up to twenty hours and required beyond that. The nap grows with the day, from ninety minutes to four hours, and stretches to six when the waking total would otherwise pass twenty four hours. It goes on the plane where possible, in the early afternoon by your body clock or in a window where you're avoiding light anyway, and never within eight hours of the next bedtime. Landing in the small hours means bed on arrival; landing near your usual wake time means staying up until that evening.",
   },
   {
     title: 'Caffeine and melatonin',
@@ -349,16 +362,17 @@ on the travel day:
       code: `tmin_near_flight = the Tmin closest to the middle of the flight
 body_night       = [tmin - 5h, tmin + 3h]
 overlap          = body_night ∩ flight, less 30 min at each end
-if overlap >= 2h: schedule sleep for the overlap`,
+if overlap >= 2h: schedule sleep for the overlap, rounded to 30 min`,
     },
     {
       title: '4. First night at the destination',
       code: `until_bed  = hours from landing to the next habitual bedtime, dest clock
 until_wake = hours from landing to the next habitual wake
-if until_bed <= 3h or until_wake < until_bed:      # evening or night landing
+night = until_wake < until_bed and until_wake - 1.5h >= 2h
+if until_bed <= 3h or night:                       # evening or night landing
     bed  = landing + 1.5h
     wake = next habitual wake, at least 6.5h later
-else:                                              # daytime landing
+else:                                              # daytime or dawn landing
     bed  = tonight's habitual bedtime
     if awake since last wake > 20h: bed -= 1h
     wake = next habitual wake
@@ -374,7 +388,7 @@ while remaining > 0 and within the plan:
     provisional = tmin + 24h ± min(remaining, max_rate)
     windows = light_windows(tmin, provisional)
     earned  = min(remaining, rate given windows.achieved)
-    next    = tmin + 24h ± earned, rounded to 5 min
+    next    = tmin + 24h ± earned
     remaining -= earned
     tmin = next`,
     },
@@ -385,6 +399,7 @@ while remaining > 0 and within the plan:
 advance: seek  = the 4 waking hours after prev Tmin
          avoid = [next Tmin - 8h, next Tmin]
 seek pieces outside sleep are kept; avoid pieces shorter than 45 min are dropped
+shown window edges are rounded to 15 min
 achieved = Σ over seek pieces of (length / 4h) × quality
 quality  = 1.0 in daylight hours (07:00 to 19:00 local) or with a light box
            0.6 under room light
@@ -393,11 +408,15 @@ earned   = unmanaged_rate + bonus × achieved   after landing
     },
     {
       title: '7. Naps, caffeine, melatonin',
-      code: `for each waking stretch (wake to next bed):
-    if stretch > 18h:
-        nap = up to 90 min, first choice inside an avoid-light window on the plane,
-              then on the plane, then any avoid-light window, then as early as
-              allowed; never later than bed - 8h
+      code: `for each waking stretch S (wake to next bed):
+    if S > 18h:
+        nap length = clamp(S - 18h, 1.5h, 4h), raised to S - 24h up to 6h
+        optional if S <= 20h, else required
+        window   = [wake + 1h, bed - 8h] minus seek-light windows
+        required naps also keep both awake halves <= 16h when possible
+        place, first fit: on the plane in an avoid-light window; on the plane at
+              Tmin + 8h to 12h; on the plane outside Tmin - 8h to - 5h; on the
+              plane; an avoid-light window; Tmin + 8h to 12h; anywhere
     caffeine fine from wake (or nap end) until bed - cutoff
         cutoff = 6h for regular users, 8h otherwise
     if stretch >= 18h: suggest a dose at wake or nap end, and on landing,

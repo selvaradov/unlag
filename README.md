@@ -34,8 +34,12 @@ Everything hangs off one point.
   that for an advance, less with room light than daylight.
 - **Sleep.** Bedtime moves by up to an hour a day before the flight and a
   night is never cut below 6.5 h. Landing in the evening or at night means bed
-  90 minutes after landing. Waking stretches over 18 h get a nap of up to 90
-  minutes, on the plane where possible, at least eight hours before bed.
+  90 minutes after landing; landing within a few hours of habitual wake counts
+  as morning. Waking stretches over 18 h get a nap, optional to 20 h and
+  required beyond, sized from 90 minutes to 4 h with the day and up to 6 h when
+  the waking total would pass 24 h. It goes on the plane where possible, in the
+  body's early afternoon or an avoid-light window, at least eight hours before
+  bed. Shown times round to 15 minutes for light and 30 for sleep.
 - **Caffeine** is a wakefulness tool with a cutoff before bed, six hours for
   regular users and eight otherwise, never before a nap, and never within an
   hour of the cutoff.

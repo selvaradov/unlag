@@ -1,7 +1,7 @@
 // The sentence at the top, written like a note to self: what now, until when, then what.
 import type { Plan, PlanEvent } from '../algorithm/types.ts';
 import { MINUTE } from '../algorithm/time.ts';
-import { HEADLINE } from '../copy.ts';
+import { HEADLINE, napIsSleep } from '../copy.ts';
 import type { FeedItem } from './feed.ts';
 import { clock, duration, isPoint, overlapsDaylight, shortDay, zoneAbbr } from './format.ts';
 import { ICONS } from './icons.ts';
@@ -14,7 +14,9 @@ function nowPhrase(plan: Plan, e: PlanEvent): string | null {
     case 'sleep':
       return e.note === 'onBoard' ? HEADLINE.nowSleepOnBoard(until) : HEADLINE.nowSleep(until);
     case 'nap':
-      return HEADLINE.nowNap(until);
+      if (e.optional) return HEADLINE.nowNap(until);
+      if (!napIsSleep(e)) return HEADLINE.nowNapRequired(until);
+      return e.note === 'onBoard' ? HEADLINE.nowSleepOnBoard(until) : HEADLINE.nowSleep(until);
     case 'dark':
       return overlapsDaylight(plan, e) ? HEADLINE.nowSunglasses(until) : HEADLINE.nowDim(until);
     case 'light':
@@ -32,7 +34,8 @@ function nextPhrase(plan: Plan, e: PlanEvent, withTime: boolean): string {
     case 'sleep':
       return e.note === 'onBoard' ? HEADLINE.nextSleepOnBoard(at) : HEADLINE.nextBed(at);
     case 'nap':
-      return HEADLINE.nextNap(at);
+      if (!napIsSleep(e)) return HEADLINE.nextNap(at);
+      return e.note === 'onBoard' ? HEADLINE.nextSleepOnBoard(at) : HEADLINE.nextSleep(at);
     case 'dark':
       return overlapsDaylight(plan, e) ? HEADLINE.nextSunglasses(at) : HEADLINE.nextDim(at);
     case 'light':
